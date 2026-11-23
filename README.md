@@ -7,7 +7,8 @@ Kleine, private Zeiterfassung für Büro und Homeoffice. Ohne Benutzerkonto, ohn
 - Stempeluhr (Kommen, Gehen, Pause nach einstellbarer Pausenregel) oder Zeiten von Hand eintragen
 - Monat, Woche und Jahr im Überblick, mit Soll, Ist und Saldo
 - Gleitzeit-Konto und Freizeitkonto (Arbeit an Wochenenden und Feiertagen)
-- Urlaub mit Übertrag und angespartem Urlaub, Gleittage, Familientage, Urlaubsplanung
+- Kappung der Gleitzeit mit Stichtag und Grenze (einstellbar, für Beamte in Bayern ab Werk an)
+- Urlaub mit Übertrag, Frist für den Resturlaub (je Dienstverhältnis), angespartem Urlaub und Zusatzurlaub, Gleittage, Familientage, Urlaubsplanung
 - Krank und Attest (die App erinnert, wenn ein Attest fehlt)
 - Homeoffice-Quote mit einstellbarer Grenze, oder ohne Grenze, ohne Homeoffice oder nur Homeoffice
 - Module: Was du nicht brauchst, schaltest du unter „Einstellungen → Module“ ab (jede Seite des Menüs außer „Übersicht“ und „Einstellungen“, dazu zum Beispiel Gleittage, Familientage, Stempeluhr, einzelne Export-Formate). Es erscheint dann nirgends mehr

@@ -196,6 +196,11 @@ body[data-design=web] .monat-grid .links{position:sticky;top:12px}
 .tag .ist{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
 .tag .ist small{display:block;font-weight:400;font-size:11px;color:var(--mut)}
 .tag .leer-tag{color:var(--mut);font-size:13px}
+/* Laufende Stempeluhr auf der Seite Tag (23.11.2026): Knopf zur Stempeluhr in der Form einer Tageszeile, Punkt pulsiert wie im Band;
+   Abstand unten: als letzte Zeile stieße der Knopf am Handy sonst an den Kartenrand (Design-Prüfung) */
+button.tag{width:100%;min-height:44px;margin-bottom:6px;font:inherit;color:inherit;background:none;border:0;border-bottom:1px solid var(--line);text-align:left}
+body[data-design] .tag:is(.laufend,.einzel) .dat{background:transparent}   /* Einträge des Tages (23.11.2026) stehen ohne Datum unter der Tageszeile */
+.tag.laufend .dat i{width:10px;height:10px;border-radius:50%;background:var(--acc);animation:puls 1.4s infinite}
 
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{white-space:nowrap;padding:9px 6px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
@@ -865,14 +870,17 @@ body[data-design] .card.leer{display:flex;flex-direction:column;align-items:cent
   :focus-visible{outline-style:solid!important;outline-width:3px!important;outline-color:Highlight!important}
 }
 /* ---- bausteine/gleitzeit_verlauf.css ---- */
-/* Gleitzeit-Verlauf (funktionen.md 11, design.md 3.17): Linie 2 px in der Bedienfarbe, Nulllinie, Grenzen gestrichelt 1,5 px rot mit Text; höchstens 480 px breit, sonst würde die Schrift im Bild zu groß */
+/* Gleitzeit-Verlauf (funktionen.md 11, design.md 3.17): Linie 2 px in der Bedienfarbe, Nulllinie, Stunden- und KW-Achse mit dezenten Hilfslinien, Grenzen gestrichelt 1,5 px rot mit Text; höchstens 480 px breit, sonst würde die Schrift im Bild zu groß */
 .gz-verlauf{display:block;width:100%;max-width:480px;height:auto;margin:8px 0;overflow:visible}
 .gz-verlauf .linie{fill:none;stroke:var(--acc-ui);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
-.gz-verlauf .null{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
+.gz-verlauf .null{stroke:var(--tx-3);stroke-width:1.5;vector-effect:non-scaling-stroke}   /* Nulllinie deutlich (Wunsch 23.11.2026), durchgezogen und grau: von den roten, gestrichelten Grenzen unterscheidbar */
+.gz-verlauf .raster,.gz-verlauf .kw line{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}   /* Hilfslinien der Stunden- und KW-Achse, dezent */
+.gz-verlauf .stunde,.gz-verlauf .kw text{font-size:11px;fill:var(--tx-3)}
+body[data-design=handy] .gz-verlauf .kw:not(.grob){display:none}   /* am Handy nur alle 10 KW, sonst stoßen die Texte aneinander */
+body[data-design=handy] .gz-verlauf .stunde,body[data-design=handy] .gz-verlauf .kw text{font-size:12px}
 .gz-verlauf .grenze{stroke:var(--rot);stroke-width:1.5;vector-effect:non-scaling-stroke}
 .gz-verlauf .heute{fill:var(--acc-ui)}
 .gz-verlauf .grenze-text{font-size:12px;fill:var(--tx-2)}
-.gz-verlauf .achse{font-size:12px;fill:var(--tx-3)}
 body[data-design=handy] .gz-verlauf{width:calc(100% - 32px)}   /* am Handy hat jede Karte innen 16 px Rand (grundlage.css), sonst ragt das Bild hinaus */
 .gz-tabelle td:first-child{white-space:normal}.gz-tabelle .gz-zeit{white-space:nowrap}   /* am Handy bricht die Zeile nach „KW nn ·“ um, der Zeitraum bleibt ganz */
 /* ---- bausteine/reiter.css ---- */
@@ -892,8 +900,17 @@ header:has(>#reiter:not([hidden])) #reiter{flex-basis:100%}   /* eigene Zeile un
 body[data-design=handy] #reiter[role=tablist]{width:auto;margin:0 16px 14px}   /* der Kopf ist am Handy display:contents: Rand wie der Titel, volle Breite */
 #reiter[role=tablist][hidden]{display:none}   /* .seg und die Regel oben setzen display:flex und schlügen sonst das hidden-Attribut: leere Leiste bleibt unsichtbar */
 /* ---- seiten/start.css ---- */
-/* Übersicht: Raster und Kacheln (F-M1); spezifischer als die Kartenregel, darum ohne !important */
-.dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr));gap:var(--karte-luecke);align-items:stretch}
+/* Übersicht: Raster und Kacheln (F-M1); spezifischer als die Kartenregel, darum ohne !important.
+   Auswahl vom 23.11.2026: nach der Breite der Inhaltsspalte (Container), nicht nach Gerät, weil Web-App, Android, Server (Docker) und Windows dieselbe
+   Oberfläche zeigen. Kleine Zahl-Kacheln (.klein) stehen zu zweit, ab 560 px Spalte zu dritt, ab 900 px zu viert; breite Karten eigene Reihe, ab 900 px
+   je halbe Breite. Flex mit Umbruch statt Raster mit Spalten: Wachsen füllt jede Reihe (eine übrige kleine Kachel wird so breit wie die Reihe, keine Lücke),
+   die Folge bleibt die der Anordnung (Lesereihenfolge = Bild). Die Mindestbreite in em stellt die Kacheln bei großer Schrift wieder untereinander. */
+.dash{display:flex;flex-wrap:wrap;gap:var(--karte-luecke);align-items:stretch;container:uebersicht/inline-size}
+.dash>*{flex:1 1 100%;min-width:0}
+.dash>.klein{flex-basis:calc(50% - var(--karte-luecke));min-width:min(100%,8em)}
+.dash .klein>b{overflow-wrap:normal}
+@container uebersicht (min-width:560px){.dash>.klein{flex-basis:calc(100% / 3 - var(--karte-luecke))}}
+@container uebersicht (min-width:900px){.dash>:not(.klein,#einrichtung,.demo-angebot,.anordnen-link){flex-basis:calc(50% - var(--karte-luecke))}.dash>.klein{flex-basis:calc(25% - var(--karte-luecke))}}
 body[data-design] .dash .kachel{display:flex;flex-direction:column;gap:6px;padding:var(--kachel-innen);margin:0;overflow:visible;color:var(--tx);text-decoration:none}
 body[data-design] .dash .card.kachel>*{margin-left:0;margin-right:0}
 /* Kennzahl (3.2): Etikett oben, Zahl groß, Zusatz klein */
@@ -901,7 +918,6 @@ body[data-design] .dash .card.kachel>*{margin-left:0;margin-right:0}
 .dash .kachel>b{font-size:34px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1;min-width:0;overflow-wrap:anywhere}
 body[data-design=handy] .dash .kachel>b{font-size:28px}
 .dash .kachel>small{font-size:13px;line-height:1.45;color:var(--tx-2)}
-.dash .kachel.breit{grid-column:1/-1}
 .dash .heute-karte .gross{display:block;font-size:24px}
 .dash .heute-karte>div:not(.knoepfe) span{color:var(--tx-2)}
 .dash .heute-karte .knoepfe{margin-top:6px}
@@ -930,10 +946,8 @@ body[data-design=handy] .dash .kachel>b{font-size:28px}
 .dash .zutun .knoepfe>.prim{flex:1 0 60%}   /* Hauptknopf in jeder Zeile gleich breit, sonst hing seine Breite an der Textlänge der Nachbarknöpfe */
 .dash .zutun li.zt-rot p{font-weight:600}
 .dash .zutun .knoepfe{margin:0}
-/* Übersicht am PC: vier Spalten; Monat und Jahr stehen neben Heute in einer Reihe (keine zwei Reihen hoch: die breite Karte „Zu tun“ darunter ließe sonst ein Loch).
-   Nur im Web-Design: Im Handy-Design ist die Spalte auch im breiten Fenster höchstens 720 px breit, vier Spalten quetschten den Text der Kacheln */
+/* Übersicht am PC: Ringe oben bündig und etwas größer (je halbe Breite nebeneinander) */
 @media (min-width:1100px){
-  body[data-design=web] .dash{grid-template-columns:repeat(4,1fr)}
   body[data-design=web] .dash .quote{justify-content:flex-start}
   body[data-design=web] .dash .ring-klein{width:170px}
 }
@@ -948,21 +962,8 @@ body[data-design=handy] .dash .kachel>b{font-size:28px}
 .profil-wahl button small{margin-top:0;font-size:13px;color:var(--tx-2)}
 .profil-wahl button.gew{border:2px solid var(--acc-ui)}
 #einrichtung select,#einrichtung input[type=text],#einrichtung input[type=number]{max-width:320px}
-/* Übersicht: erste Kachel kompakter, daneben Gleitzeit-Konto und Urlaub verfügbar */
-.dash .heute-karte{grid-column:1/-1}
-.dash .krank-breit{grid-column:1/-1}
-/* Gleitzeit und Diese Woche hintereinander (uebersichtReihe): am Handy untereinander wie alle Kacheln, am Rechner und ab 768 px nebeneinander;
-   ab 1100 px liegen sie in zwei Spalten des Rasters (subgrid), wie die Karte „Heute“ daneben */
-.dash .kachel-paar{display:contents}
-body[data-design=web] .dash .kachel-paar{display:grid;grid-column:1/-1;grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr));gap:var(--karte-luecke)}
-@media (min-width:768px){.dash .kachel-paar{display:grid;grid-column:1/-1;grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr));gap:var(--karte-luecke)}}
 /* Das Band der laufenden Stempeluhr wiederholt nur die Karte „Heute“ (Wahl vom 23.11.2026): auf der Übersicht weg, sonst überall */
-body[data-seite=start] #stempel-banner{display:none}                         /* letzte Kachel füllt ihre Reihe (bei zwei Spalten blieb daneben eine Zelle leer) */
-@media (min-width:1100px){
-  body[data-design=web] .dash .heute-karte{grid-column:span 2}
-  body[data-design=web] .dash .krank-breit{grid-column:span 2}
-  body[data-design=web] .dash .kachel-paar{grid-column:span 2;grid-template-columns:subgrid}
-}
+body[data-seite=start] #stempel-banner{display:none}
 /* Jahreswechsel (Januar): wie „Zu tun“, erledigte Schritte mit Haken und gedämpft */
 .dash .jahreswechsel ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
 .dash .jahreswechsel li{border-left:4px solid var(--acc-ui);padding:2px 0 2px 12px}
@@ -971,13 +972,14 @@ body[data-seite=start] #stempel-banner{display:none}                         /* 
 .dash .jahreswechsel input{max-width:120px}
 .jw-haken{margin-right:6px;font-weight:700}
 /* Mini-Verlauf in der Kachel „Gleitzeit“: ohne Achsen, Nulllinie gestrichelt, letzter Punkt nach Vorzeichen (die Zahl steht darüber) */
-.mini-verlauf{display:block;width:100%;max-width:200px;height:32px;margin:2px 0 6px}
+.mini-verlauf{display:block;width:100%;height:32px;margin:2px 0 6px}   /* volle Breite der Karte (Auswahl vom 23.11.2026) */
 .mini-verlauf .null{stroke:var(--line);stroke-width:1;stroke-dasharray:3 3}
 .mini-verlauf .linie{fill:none;stroke:var(--tx-2);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
-.mini-verlauf .punkt.plus{fill:var(--ok)}
-.mini-verlauf .punkt.minus{fill:var(--rot)}
+.mini-verlauf .punkt{stroke-width:5;stroke-linecap:round}
+.mini-verlauf .punkt.plus{stroke:var(--ok)}
+.mini-verlauf .punkt.minus{stroke:var(--rot)}
 /* Knopf „Anordnen“ unten auf der Übersicht (Wunsch 23.11.2026): unauffällig als leiser Link, Tippfläche 44 px, führt zu Einstellungen → Aussehen → Übersicht anordnen */
-.dash .anordnen-link{grid-column:1/-1;display:flex;justify-content:center}
+.dash .anordnen-link{display:flex;justify-content:center}
 .anordnen-link a{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:var(--rr);color:var(--tx-2);font-size:14px;text-decoration:none}
 .anordnen-link a:hover{color:var(--tx);text-decoration:underline}
 /* ---- seiten/monat.css ---- */
@@ -1397,7 +1399,7 @@ body[data-design=handy] #blatt .inh:has(.lizenz-oben)::before{z-index:2}   /* Gr
 /* Lizenztext am Rechner breiter: Tabellen darin (Python-Lizenz, 64 Zeichen) passen auch in Festbreitenschrift (Stil Terminal) ohne Umbruch */
 body[data-design=web] #blatt .inh:has(.lizenz-text){max-width:min(760px, calc(100vw - 32px))}   /* bei 768 px Fenster sonst nur 4 px Rand */
 .lizenz-text{white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 0;font-size:15px;line-height:1.5;font-family:inherit}
-/* Hilferunde 23.11.2026: Rückweg oben, Suchfeld, Gruppen als Zwischenüberschriften, Weg und Wiki-Link je Abschnitt */
+/* Hilferunde 23.11.2026: Rückweg oben, Suchfeld, Gruppen, Weg und Wiki-Link je Abschnitt */
 .hilfe-rueck{margin:0 0 8px}
 body[data-design=handy] .card>.hilfe-rueck{margin-top:12px}   /* Handy-Karten haben oben keinen Innenabstand */
 .hilfe-suche{margin:4px 0 8px}
@@ -1405,7 +1407,18 @@ body[data-design=handy] .card>.hilfe-rueck{margin-top:12px}   /* Handy-Karten ha
 #hilfe-suche{min-height:44px}
 #hilfe-leer{margin:12px 0 4px;color:var(--tx-2)}
 #hilfe-leer:empty{display:none}
-.hilfe-gruppe h3{margin:20px 0 2px;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--tx-2)}
+/* Gruppen klappen selbst auf (Wunsch des Entwicklers 23.11.2026, ab Werk zu): Zeile mit Titel, Zahl der Fragen und Pfeil; die Fragen darunter eingerückt */
+details.hilfe-gruppe{border-top:1px solid var(--line);padding:2px 0}   /* Zeilen mindestens 4 px auseinander, wie bei den Fragen */
+details.hilfe-gruppe:first-of-type{border-top:0}
+details.hilfe-gruppe>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;min-height:44px;box-sizing:border-box;padding:10px 26px 10px 0;position:relative}
+details.hilfe-gruppe>summary::-webkit-details-marker{display:none}
+details.hilfe-gruppe>summary::after{content:"›";position:absolute;right:4px;top:50%;transform:translateY(-50%) rotate(90deg);color:var(--mut);font-size:20px;transition:transform .15s}
+details.hilfe-gruppe[open]>summary::after{transform:translateY(-50%) rotate(-90deg)}
+details.hilfe-gruppe[open]>summary{margin-bottom:4px}
+details.hilfe-gruppe>summary h3{margin:0;font-size:17px;font-weight:700;color:var(--tx)}
+.hilfe-anzahl{color:var(--tx-2);font-variant-numeric:tabular-nums}
+details.hilfe-gruppe>details.faq{margin-left:12px}
+details.hilfe-gruppe[open]{padding-bottom:6px}
 .hilfe-gruppe[hidden],details.faq[hidden]{display:none}
 details.faq{scroll-margin-top:72px}   /* beim Sprung über „?“ nicht unter der Kopfleiste (Handy, sticky) */
 details.faq>div p.hilfe-weg{margin-top:8px}

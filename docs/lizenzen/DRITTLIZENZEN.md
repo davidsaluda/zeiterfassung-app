@@ -15,7 +15,7 @@ Das Zip der Fassung „Server (Docker)“ und der Server enthalten nur den eigen
 |------|---------|--------|---------|--------|------|
 | Python | 3.15.2 | PSF-2.0 (dazu Teile unter eigenen Lizenzen) | Führt die App aus (Rechenkern, Datenbank, Server) | python.org, Windows-Installer | `Python-LICENSE.txt`, `Python-Anerkennungen.txt` |
 | OpenSSL (libcrypto-3, libssl-3) | 3.5.9 | Apache-2.0 | Verschlüsselung für Abgleich und Sicherung | mit Python für Windows | `Apache-2.0.txt` |
-| SQLite (sqlite3.dll) | 3.53.4 | gemeinfrei | Datenbank der Zeiten | mit Python für Windows | – |
+| SQLite (sqlite3.dll) | 3.54.1 | gemeinfrei | Datenbank der Zeiten | DLL von sqlite.org (statt der von Python), beim Bau mit Prüfsumme geprüft | – |
 | libffi (libffi-8.dll) | 8 (Dateiname) | MIT | Ruft Systemfunktionen aus Python auf | mit Python für Windows | `Python-LICENSE.txt` |
 | Microsoft-Laufzeit (VCRUNTIME140.dll) | – | Microsoft Distributable Code | Grundlage, die Python unter Windows braucht | mit Python für Windows | Bedingungen in `Python-LICENSE.txt` („Additional Conditions for this Windows binary build“) |
 | PyInstaller-Bootloader | 6.22.3 | GPL-2.0-or-later mit Bootloader-Ausnahme | Startet die App als ein Programm | pyinstaller.org | `PyInstaller-COPYING.txt` |
