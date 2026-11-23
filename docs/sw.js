@@ -4,21 +4,21 @@
 // 1. Alle Programmdateien im Gerät behalten, damit die App ohne Internet startet. Geladen wird nur von der eigenen Adresse.
 // 2. Anfragen der Oberfläche („api/…“) nicht ins Netz schicken, sondern an die Seite geben; dort rechnet Python im Gerät (start.js, kern.js).
 // VERSION und DATEIEN setzt web_bauen.py ein (Datei -> Kurzform ihrer SHA-256-Summe).
-const VERSION = "20261122.1619";
+const VERSION = "20261123.0553";
 const DATEIEN = {
- "app.zip": "3a85a7fce484948b",
- "buendel.css": "6f31de1ba0412fc0",
- "buendel.js": "4459389317c27fad",
+ "app.zip": "68e742483f03a8a9",
+ "buendel.css": "d5947944c2c26326",
+ "buendel.js": "d619a0497ee8907b",
  "icon-180.png": "fde9a08b04e87a26",
  "icon-192.png": "96cb413dec9a6aa3",
  "icon-512.png": "bcdaded6225901de",
  "icon-maskable-512.png": "2f537b32a49ba198",
  "icon.svg": "87e078fd4cfa21bb",
- "index.html": "565eb69af0dab912",
- "kern.js": "fa753112b5116c7a",
+ "index.html": "eedfa05e82e1dad2",
+ "kern.js": "841ae2452be83722",
  "lizenzen/Apache-2.0.txt": "7d5450cb2d142651",
  "lizenzen/Chaquopy-LICENSE.txt": "345a9fdfeed355d3",
- "lizenzen/DRITTLIZENZEN.md": "c22c43abcc0b4951",
+ "lizenzen/DRITTLIZENZEN.md": "49c5442bc73da495",
  "lizenzen/Emscripten-LICENSE.txt": "620a78084fc7ca97",
  "lizenzen/MPL-2.0.txt": "1f256ecad1928805",
  "lizenzen/PyInstaller-COPYING.txt": "0598064c7d2718e3",
@@ -40,41 +40,28 @@ const DATEIEN = {
  "lizenzen/setuptools-LICENSE.txt": "86da0f01aeae4634",
  "lizenzen/typing_extensions-LICENSE.txt": "3b2f81fe21d181c4",
  "lizenzen/xz-COPYING.txt": "616a3ad264ce29b8",
- "manifest.webmanifest": "81fecc906261ccdb",
+ "manifest.webmanifest": "2ecaef565e5800f2",
  "pyodide/pycryptodome-3.23.0-cp37-abi3-pyemscripten_2026_0_wasm32.whl": "67b86abb0de02dce",
  "pyodide/pyodide-lock.json": "c000c96d21b52ac5",
  "pyodide/pyodide.asm.mjs": "22514b8be6980e28",
  "pyodide/pyodide.asm.wasm": "e14d49ceca9b4a0e",
  "pyodide/pyodide.mjs": "1bb8cc14f9405aaa",
- "pyodide/python_stdlib.zip": "feeb3bc404b44f4b",
+ "pyodide/python_stdlib.zip": "c35c27bb246a01ca",
  "start-320x568-2-dunkel.png": "0a68ca6226201d1c",
- "start-320x568-2.png": "594f60ef5a2ab6b4",
  "start-375x667-2-dunkel.png": "a145cc3a9bbb779e",
- "start-375x667-2.png": "45eeffb8ef239466",
  "start-375x812-3-dunkel.png": "dacff926e9e40cce",
- "start-375x812-3.png": "5b068d5a6a553549",
  "start-390x844-3-dunkel.png": "3e5bd6daccc6ab7f",
- "start-390x844-3.png": "2d1f6ea22edad1ac",
  "start-393x852-3-dunkel.png": "9cc7f752bb180f4a",
- "start-393x852-3.png": "cd93f2582bdeb44d",
  "start-402x874-3-dunkel.png": "c0030b69e45692b3",
- "start-402x874-3.png": "29574ae8abeae091",
  "start-414x736-3-dunkel.png": "0783aa632b53ae16",
- "start-414x736-3.png": "09af85e0188989a6",
  "start-414x896-2-dunkel.png": "ade304003730c9db",
- "start-414x896-2.png": "828982819721bf10",
  "start-414x896-3-dunkel.png": "6cf5dca0b51265a7",
- "start-414x896-3.png": "1aa1e5c29edc68cb",
  "start-420x912-3-dunkel.png": "2a491dbaa2fc5ab0",
- "start-420x912-3.png": "b5547b62952350a3",
  "start-428x926-3-dunkel.png": "81d1405dbc436ba7",
- "start-428x926-3.png": "c1c0ed68e082964c",
  "start-430x932-3-dunkel.png": "5e9bf8a4b96c479e",
- "start-430x932-3.png": "14bf4889d83aa434",
  "start-440x956-3-dunkel.png": "dda310521b29f319",
- "start-440x956-3.png": "7939dc87d7303d33",
- "start.css": "381b02a218df6ca7",
- "start.js": "b117e27aa840f9f0"
+ "start.css": "3d984efe7b717848",
+ "start.js": "0b1c1e8b23af716c"
 };
 const LAGER = "zeiterfassung-" + VERSION;
 const BASIS = new URL("./", self.location.href).pathname;
@@ -111,8 +98,12 @@ async function einlagern() {
   }
 }
 
-// Installation: Dateien einlagern, dann sofort übernehmen. Scheitert das Einlagern, bleibt die alte Version.
-self.addEventListener("install", ev => ev.waitUntil(einlagern().then(() => self.skipWaiting())));
+const WEITER = "weiter";
+// Installation: Dateien einlagern. Scheitert das Einlagern, bleibt die alte Version. Die erste Version läuft sofort; eine neue wartet, bis die Person
+// „Neu laden“ tippt oder die App neu startet (start.js schickt dann WEITER): Mitten in der Arbeit wechselt nie das Dienst-Skript unter der offenen Seite.
+self.addEventListener("install", ev => ev.waitUntil(einlagern()));
+// Nur die Bitte WEITER der eigenen Seite (Nachrichten kommen nur von Fenstern dieser Adresse) übernimmt die wartende Version.
+self.addEventListener("message", ev => { if (ev.data === WEITER) self.skipWaiting(); });
 // Aktivierung: alte Lager dieser App löschen und offene Seiten übernehmen.
 self.addEventListener("activate", ev => ev.waitUntil((async () => {
   for (const name of await caches.keys()) if (/^zeiterfassung-\d/.test(name) && name !== LAGER) await caches.delete(name);   // nur die eigenen (zeiterfassung-<Version>): Unter derselben Adresse hat die Server-Oberfläche ihr Lager „zeiterfassung-oberflaeche“

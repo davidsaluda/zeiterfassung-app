@@ -28,17 +28,27 @@ const dateisystemSichern = laden => new Promise((ok, fehler) => py.FS.syncfs(lad
 // Liefert die Startzeit in ms. Wird einmal beim Laden des Arbeitsfadens aufgerufen (Selbsttest und Anfragen warten darauf).
 async function starten() {
   const t0 = performance.now();
+  let t = t0;
+  // Merkt die Dauer eines Startschritts in self.ZEIT_PHASEN (ms); das Messwerkzeug (werkzeuge/pruefen/tempo/webapp_messen.mjs) liest sie im Arbeitsfaden.
+  const phase = name => { const jetzt = performance.now(); self.ZEIT_PHASEN[name] = Math.round(jetzt - t); t = jetzt; };
+  self.ZEIT_PHASEN = {};
   py = await loadPyodide({ indexURL: new URL("./pyodide/", self.location.href).href });
+  phase("pyodide");
   await py.loadPackage(["pycryptodome"], { messageCallback: () => {} });   // AES-GCM und PBKDF2: Pyodide 314 bringt kein OpenSSL mit (aes.py)
+  phase("paket");
   py.FS.mkdirTree(DATEN);
   py.FS.mount(py.FS.filesystems.IDBFS, {}, DATEN);
   await dateisystemSichern(true);                                    // gespeicherten Stand aus dem Gerät holen
+  phase("speicher");
   const paket = await fetch(new URL("./app.zip", self.location.href));   // gleichzeitig laden brachte gemessen nichts (18.11.2026)
   if (!paket.ok) throw new Error("app.zip fehlt");
   py.unpackArchive(await paket.arrayBuffer(), "zip", { extractDir: APP });
+  phase("app_zip");
   py.runPython(`import sys; sys.path.insert(0, "${APP}"); import web_start; web_start.starten("${DATEN}")`);
   anfrage = py.runPython(`lambda m, p, t, c, k: web_start.anfrage(m, p, t, c, k.to_bytes())`);
+  phase("python");
   await dateisystemSichern(false);                                   // erster Start: Datenbank und Geräte-Kennung festschreiben
+  phase("festschreiben");
   return Math.round(performance.now() - t0);
 }
 

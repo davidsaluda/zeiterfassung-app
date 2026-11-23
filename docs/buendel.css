@@ -5,12 +5,13 @@
    die Dunkel-Sätze stehen nur in @media screen (3.16). darstellung() setzt die Akzentwerte inline; die Werte hier gelten bis dahin (Blau). ===== */
 :root{color-scheme:light;
   --bg:#f2f3f7;--bg-oben:#f7f8fb;--bg-unten:#e8eaf0;
-  --bg-img:radial-gradient(70% 45% at 85% -5%,color-mix(in srgb,var(--acc) 8%,transparent),transparent 70%),linear-gradient(180deg,var(--bg-oben),var(--bg-unten) 70%,var(--bg));   /* endet in --bg: unter dem ersten Bildschirm keine Kante */
-  --bg-schlimm:color-mix(in srgb,var(--bg-unten) 92%,var(--acc));   /* ungünstigster Punkt des Verlaufs, nur für die Messung */
+  --bg-img:radial-gradient(70% 45% at 85% -5%,color-mix(in srgb,var(--acc) var(--schimmer),transparent),transparent 70%),radial-gradient(60% 40% at 0% 100%,color-mix(in srgb,var(--acc) calc(var(--schimmer) * .6),transparent),transparent 70%),linear-gradient(180deg,var(--bg-oben),var(--bg-unten) 70%,var(--bg));   /* endet in --bg: unter dem ersten Bildschirm keine Kante */
+  --schimmer:14%;   /* Anteil des Akzents am Verlauf (unten 60 % davon); darstellung() setzt ihn je Farbe (schimmerAnteil), hier der Wert für Blau (dunkel 25 %, hell 14 %) */
+  --bg-schlimm:color-mix(in srgb,var(--bg-unten) calc(100% - var(--schimmer)),var(--acc));   /* ungünstigster Punkt des Verlaufs, nur für die Messung */
   --card:rgba(255,255,255,.66);--card-fest:#fff;--pop:#fbfbfd;--frei:rgba(120,120,128,.12);
   --glas:blur(24px) saturate(180%);--glas-karte:var(--glas);--glas-blatt:blur(8px);--kopf-deckung:72%;
   --rand:rgba(255,255,255,.85);--rand-aussen:rgba(17,19,24,.08);--line:rgba(17,19,24,.10);--knopf-rand:rgba(60,60,67,.3);--feld-rand:rgba(60,60,67,.6);
-  --glanz:inset 0 1px 0 rgba(255,255,255,.9);
+  --glanz:inset 0 1px 0 #fff;
   --sh:0 1px 2px rgba(17,19,24,.06),0 8px 24px rgba(17,19,24,.08),0 0 0 1px var(--rand-aussen);
   --sh-hoch:0 2px 6px rgba(17,19,24,.08),0 18px 40px rgba(17,19,24,.14),0 0 0 1px var(--rand-aussen);
   --tx:#0d0f14;--tx-2:#3c414d;--tx-3:#575c69;--mut:var(--tx-2);
@@ -21,7 +22,7 @@
   --rotbg:color-mix(in srgb,var(--rot) 14%,transparent);--gelbbg:color-mix(in srgb,#e8a400 14%,transparent);
   --c-urlaub:#2f9e44;--c-gleit:#6f46e0;--c-krank:#e03131;--c-kd:#828894;--c-ez:#d6336c;--c-frei:#26968a;--c-fam:#b07d00;
   --zahl-grund:#c92a2a;   /* Zahl am Symbol, beide Modi: weiße Schrift 5,46:1 */
-  --acc:#007aff;--acc-t:#fff;--acc-k:#006fe8;--acc-rand:#007aff;--acc-fg:#0052ab;--acc-ui:#006be0;--acc-bg:color-mix(in srgb,var(--acc) 14%,var(--card));
+  --acc:#007aff;--acc-t:#fff;--acc-k:#006fe8;--acc-rand:#007aff;--acc-fg:#004ea3;--acc-ui:#0068d9;--acc-bg:color-mix(in srgb,var(--acc) 14%,var(--card));
   /* Maße: Abstände im 4er-Raster, Radien, Bedienhöhe */
   --a-1:4px;--a-2:8px;--a-3:12px;--a-4:16px;--a-5:20px;--a-6:24px;--a-8:32px;--a-10:40px;
   --r-klein:10px;--r-feld:12px;--r-mittel:16px;--r:20px;--r-gross:26px;--r-blatt:30px;--r-pille:999px;
@@ -31,11 +32,12 @@
   --dauer-1:120ms;--dauer-2:200ms;--dauer-3:320ms;--kurve:cubic-bezier(.2,.8,.2,1);--kurve-raus:cubic-bezier(.4,0,1,1)}
 @media screen{:root[data-theme=dark]{color-scheme:dark;
   --bg:#050608;--bg-oben:#0b0d14;--bg-unten:#050608;
-  --bg-img:radial-gradient(80% 50% at 15% -10%,color-mix(in srgb,var(--acc) 12%,transparent),transparent 70%),linear-gradient(180deg,var(--bg-oben),var(--bg-unten) 60%);
-  --bg-schlimm:color-mix(in srgb,var(--bg-oben) 88%,var(--acc));
-  --card:rgba(255,255,255,.07);--card-fest:#15171d;--pop:#1b1e25;--frei:rgba(255,255,255,.06);
-  --rand:rgba(255,255,255,.14);--rand-aussen:rgba(0,0,0,.4);--line:rgba(255,255,255,.10);--knopf-rand:rgba(255,255,255,.18);--feld-rand:rgba(255,255,255,.4);
-  --glanz:inset 0 1px 0 rgba(255,255,255,.08);
+  --schimmer:25%;
+  --bg-img:radial-gradient(80% 50% at 15% -10%,color-mix(in srgb,var(--acc) var(--schimmer),transparent),transparent 70%),radial-gradient(70% 45% at 100% 100%,color-mix(in srgb,var(--acc) calc(var(--schimmer) * .6),transparent),transparent 70%),linear-gradient(180deg,var(--bg-oben),var(--bg-unten) 60%);
+  --bg-schlimm:color-mix(in srgb,var(--bg-oben) calc(100% - var(--schimmer)),var(--acc));
+  --card:rgba(255,255,255,.06);--card-fest:#15171d;--pop:#1b1e25;--frei:rgba(255,255,255,.06);
+  --rand:rgba(255,255,255,.16);--rand-aussen:rgba(0,0,0,.4);--line:rgba(255,255,255,.10);--knopf-rand:rgba(255,255,255,.18);--feld-rand:rgba(255,255,255,.4);
+  --glanz:inset 0 1px 0 rgba(255,255,255,.22);
   --sh:0 10px 30px rgba(0,0,0,.45),0 0 0 1px var(--rand-aussen);
   --sh-hoch:0 24px 60px rgba(0,0,0,.6),0 0 0 1px var(--rand-aussen);
   --tx:#f5f5f7;--tx-2:#bcc1ca;--tx-3:#a0a5af;
@@ -43,14 +45,15 @@
   --ho:#ff9f0a;--ho-t:#ffa820;--dst:#40c8e0;--dst-t:#4bcbe2;--ok:#30d158;--ok-t:#3cd462;--rot:#ff453a;--rot-t:#ff918a;--gelb:#ffd60a;--gelb-t:#ffd60a;
   --gelbbg:color-mix(in srgb,#ffd60a 16%,transparent);
   --c-urlaub:#51cf66;--c-gleit:#9b7bff;--c-krank:#ff6b6b;--c-kd:#9aa1ac;--c-ez:#f06595;--c-frei:#38c7b4;--c-fam:#fcc419;
-  --acc-fg:#7abaff;--acc-ui:#3696ff}}
+  --acc-fg:#91c6ff;--acc-ui:#4da2ff}}
 @media screen and (prefers-color-scheme:dark){:root:not([data-theme=light]):not([data-theme=dark]){color-scheme:dark;
   --bg:#050608;--bg-oben:#0b0d14;--bg-unten:#050608;
-  --bg-img:radial-gradient(80% 50% at 15% -10%,color-mix(in srgb,var(--acc) 12%,transparent),transparent 70%),linear-gradient(180deg,var(--bg-oben),var(--bg-unten) 60%);
-  --bg-schlimm:color-mix(in srgb,var(--bg-oben) 88%,var(--acc));
-  --card:rgba(255,255,255,.07);--card-fest:#15171d;--pop:#1b1e25;--frei:rgba(255,255,255,.06);
-  --rand:rgba(255,255,255,.14);--rand-aussen:rgba(0,0,0,.4);--line:rgba(255,255,255,.10);--knopf-rand:rgba(255,255,255,.18);--feld-rand:rgba(255,255,255,.4);
-  --glanz:inset 0 1px 0 rgba(255,255,255,.08);
+  --schimmer:25%;
+  --bg-img:radial-gradient(80% 50% at 15% -10%,color-mix(in srgb,var(--acc) var(--schimmer),transparent),transparent 70%),radial-gradient(70% 45% at 100% 100%,color-mix(in srgb,var(--acc) calc(var(--schimmer) * .6),transparent),transparent 70%),linear-gradient(180deg,var(--bg-oben),var(--bg-unten) 60%);
+  --bg-schlimm:color-mix(in srgb,var(--bg-oben) calc(100% - var(--schimmer)),var(--acc));
+  --card:rgba(255,255,255,.06);--card-fest:#15171d;--pop:#1b1e25;--frei:rgba(255,255,255,.06);
+  --rand:rgba(255,255,255,.16);--rand-aussen:rgba(0,0,0,.4);--line:rgba(255,255,255,.10);--knopf-rand:rgba(255,255,255,.18);--feld-rand:rgba(255,255,255,.4);
+  --glanz:inset 0 1px 0 rgba(255,255,255,.22);
   --sh:0 10px 30px rgba(0,0,0,.45),0 0 0 1px var(--rand-aussen);
   --sh-hoch:0 24px 60px rgba(0,0,0,.6),0 0 0 1px var(--rand-aussen);
   --tx:#f5f5f7;--tx-2:#bcc1ca;--tx-3:#a0a5af;
@@ -58,7 +61,7 @@
   --ho:#ff9f0a;--ho-t:#ffa820;--dst:#40c8e0;--dst-t:#4bcbe2;--ok:#30d158;--ok-t:#3cd462;--rot:#ff453a;--rot-t:#ff918a;--gelb:#ffd60a;--gelb-t:#ffd60a;
   --gelbbg:color-mix(in srgb,#ffd60a 16%,transparent);
   --c-urlaub:#51cf66;--c-gleit:#9b7bff;--c-krank:#ff6b6b;--c-kd:#9aa1ac;--c-ez:#f06595;--c-frei:#38c7b4;--c-fam:#fcc419;
-  --acc-fg:#7abaff;--acc-ui:#3696ff}}
+  --acc-fg:#91c6ff;--acc-ui:#4da2ff}}
 /* Deckende Stile (themen/<name>.css): kein Verlauf, kein Glanz, die Leiste mit dem großen Radius, Felder mit --feld-r des Stils (sonst --rr).
    Hinter den Dunkel-Sätzen: Der Satz für „Automatisch“ wiegt gleich viel (0,3,0) und brächte sonst den Glas-Verlauf zurück. Glas und die Seite vor darstellung() (ohne data-thema) bleiben außen vor. */
 @media screen{
@@ -74,7 +77,7 @@
 body[data-design=web]{--r:26px;--karte-innen:var(--a-6);--kachel-innen:var(--a-6);--karte-luecke:var(--a-5)}
 body[data-design=handy]{--h:46px;--r:20px;--karte-innen:0;--kachel-innen:var(--a-4);--karte-luecke:var(--a-4)}
 /* Grund: fester Ton, der weiche Verlauf liegt nur im ersten Bildschirm (kein fixed: ruckelt in der Android-WebView, F-K1) */
-body[data-design]{background-color:var(--bg);background-image:var(--bg-img);background-repeat:no-repeat;background-size:100% 100vh;min-height:100vh}
+body[data-design]{background-color:var(--bg);background-image:var(--bg-img);background-repeat:no-repeat;min-height:100vh}   /* Verlauf über die ganze Seite (Fläche des Dokuments): keine Kante nach dem ersten Bildschirm, auch nicht im Ganzseitenbild */
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 -apple-system,"SF Pro Text","Segoe UI Variable Text","Segoe UI",system-ui,Arial,sans-serif;-webkit-font-smoothing:antialiased}
@@ -127,9 +130,10 @@ svg.ic{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;strok
 #zurueck{display:none}
 #menue{display:inline-flex}
 body[data-design=handy] #zurueck.da{display:inline-flex}
+body[data-design=web] #zurueck.unter{display:inline-flex;width:44px;height:44px}   /* Unterseite: Weg zur Liste wie am Handy (Fehlermeldung 22.11.2026) */
 
 body[data-design=web]{padding-left:248px}
-body[data-design=web] #seite{display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;width:248px;background:var(--card);border-right:1px solid var(--line);padding:18px 14px;z-index:7}
+body[data-design=web] #seite{display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;width:248px;padding:18px 14px;z-index:7}   /* Grund und Rand: #huelle (unten) */
 body[data-design=web] #nav{display:none}
 body[data-design=web] main{padding-bottom:40px}
 body[data-design=web] header{position:static;background:transparent;border:0;padding:22px 24px 4px;max-width:1180px;margin:0 auto}
@@ -227,8 +231,11 @@ body[data-design=web] #blatt{align-items:center}
 body[data-design=web] #blatt .inh{border-radius:var(--r-blatt);max-width:520px}
 #blatt h3{margin:0 0 4px;font-size:20px}
 .reihe{display:flex;gap:10px}.reihe>*{flex:1}
+.reihe>div[hidden]{display:none!important}   /* versteckte Felder (z. B. Startwerte nach Homeoffice-Modus) schlagen die display-Regeln der Reihe */
 .knoepfe{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .knoepfe .prim{flex:1}
+/* Ankreuzfeld in der Rückfrage („Nicht mehr fragen“): ganze Zeile tippbar, 44 px auch im Web-Design */
+.frage-haken{display:flex;align-items:center;gap:10px;min-height:44px;margin:10px 0 0;font-size:15px;color:var(--tx);cursor:pointer}
 .seg{display:flex;background:color-mix(in srgb,var(--tx) 8%,transparent);border-radius:12px;padding:3px;gap:4px}
 .seg button{flex:1;border:0;background:transparent;padding:8px 6px;border-radius:10px;font-size:14px}
 
@@ -257,7 +264,7 @@ body[data-design=handy] .card{overflow:hidden}
 body[data-design] .card{background:var(--card);border:1px solid var(--rand);border-radius:var(--r);box-shadow:var(--glanz),var(--sh);
   -webkit-backdrop-filter:var(--glas-karte);backdrop-filter:var(--glas-karte);padding:var(--karte-innen);margin:0 0 var(--karte-luecke)}
 body[data-design=handy] .card>h2{padding:14px 16px 4px;margin:0;font-size:15px;letter-spacing:0;text-transform:none;color:var(--tx-2);font-weight:600}
-body[data-design=handy] .card>*:not(h2):not(.zeile):not(table):not(.tbl):not(.tag):not(.kw):not(.balken):not(.kal){margin-left:16px;margin-right:16px}   /* das Monats-Raster nimmt seinen eigenen Rand (Z2) */
+body[data-design=handy] .card:not(.dash>.kachel)>*:not(h2):not(.zeile):not(table):not(.tbl):not(.tag):not(.kw):not(.balken):not(.kal){margin-left:16px;margin-right:16px}   /* das Monats-Raster nimmt seinen eigenen Rand (Z2); Kacheln der Übersicht haben Innenabstand, dort käme der Rand doppelt */
 body[data-design=handy] .card>.hero{margin-top:16px}
 body[data-design=handy] .card>.schnell,body[data-design=handy] .card>.raster{margin-bottom:16px}
 body[data-design=handy] .card>.hinweis{margin-bottom:14px}
@@ -287,8 +294,11 @@ body[data-design=handy] #blatt .inh::before{content:"";position:absolute;top:8px
 body[data-design=handy] #blatt h3{text-align:center;font-size:17px;font-weight:600;margin-bottom:6px}
 
 /* ===== Web-Design: ruhiger, größer, mehr Luft ===== */
-body[data-design=web]{padding-left:264px}
-body[data-design=web] #seite{width:264px;padding:22px 16px;background:var(--card);border-right:1px solid var(--rand);-webkit-backdrop-filter:var(--glas);backdrop-filter:var(--glas);box-shadow:var(--glanz)}
+body[data-design=web]{--seite-b:264px;padding-left:var(--seite-b)}
+/* Grund und Rand der Seitenleiste malt die Hülle als Schatten links neben sich: Sie ist so hoch wie die Seite, die feste Leiste nur so hoch wie das Fenster
+   (ganzseitige Bilder endeten sonst bei 900 px). Die Leiste bleibt durchsichtig, zwei halbdurchsichtige Flächen übereinander wären dunkler. */
+body[data-design=web] #huelle{display:flow-root;box-shadow:-1px 0 0 var(--rand),calc(-1 * var(--seite-b)) 0 0 var(--card)}   /* flow-root: der Rand der Fußzeile bleibt in der Hülle */
+body[data-design=web] #seite{width:var(--seite-b);padding:22px 16px;background:none;-webkit-backdrop-filter:var(--glas);backdrop-filter:var(--glas);box-shadow:var(--glanz)}
 /* Seitenleiste und Tableiste aus Glas, aktive Seite als Pille (3.7); hell und dunkel unterscheiden sich nur in --pille-symbol und --pille-zeichen */
 body[data-design=web] #seitennav :is(a,button){border-radius:var(--r-pille);color:var(--tx);transition:background-color var(--dauer-1) var(--kurve),color var(--dauer-1) var(--kurve)}
 @media (hover:hover){body[data-design=web] #seitennav :is(a,button):hover{background:color-mix(in srgb,var(--tx) 8%,transparent)}}
@@ -483,6 +493,18 @@ body[data-design=handy] .card>.reihe{margin-left:16px;margin-right:16px}
 /* ===== Kopfleiste: Wrapper ===== */
 .kopfleiste{display:contents}
 header #zurueck{order:0}header h1{order:1}header .jahr{order:2}header #zu-heute{order:3}header #menue{order:3}
+/* „?“ neben dem Seitentitel (Hilferunde 23.11.2026): Titel und Knopf in einer Zeile; 44 px Tippfläche, sichtbar der 28-px-Chip wie an den Kacheln */
+.titel-zeile{display:flex;align-items:center;gap:6px;min-width:0;flex:1;order:1}
+header .titel-zeile h1{flex:0 1 auto;min-width:0;overflow-wrap:anywhere}
+.titel-hilfe{min-width:44px;min-height:44px;width:44px;height:44px;padding:8px;border:0;background-clip:content-box;margin:0}
+.titel-hilfe[hidden]{display:none}
+.titel-zeile .titel-hilfe{order:2}              /* rechts vom Titel, auch wenn header h1 order:1 hat */
+/* Am Rechner steht die Reiterleiste in derselben Zeile: mit min-width:0 und Bruch überall stand „Zeit“ Buchstabe für Buchstabe untereinander,
+   der Kopf wuchs um 54 px und schob die Tag-Spalte unter den Fensterrand (Designfund 23.11.2026) */
+body[data-design=web] .titel-zeile{min-width:auto}
+body[data-design=web] header .titel-zeile h1{overflow-wrap:normal}
+body[data-design=handy] .titel-zeile{padding:0 16px;margin:0 0 4px}
+body[data-design=handy] header .titel-zeile h1{flex:0 1 auto;padding:0;margin:0}
 /* ===== Handy: Kopfleiste bleibt sichtbar und wandert mit (sticky); Überschrift scrollt normal weg ===== */
 body[data-design=handy] header{display:contents}
 body[data-design=handy] .kopfleiste{display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:8;padding:calc(8px + env(safe-area-inset-top)) 16px 8px;transition:background .2s,border-color .2s;border-bottom:.5px solid transparent}
@@ -516,7 +538,7 @@ body[data-design=handy] .card>.tbl,body[data-design=handy] .card>table{margin-le
 .card>.tbl,.card>table{padding-bottom:4px}
 /* iOS Safari: Datumsfelder wie normale Felder (Text links, mittig, nicht über den Rand) */
 input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;text-align:left;line-height:normal}
-input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;margin:0;min-height:calc(var(--h) - 22px);display:flex;align-items:center}
+input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;margin:0;min-height:0;line-height:calc(var(--h) - 2px)}   /* iOS setzt den Wert sonst oben ins Feld: Zeilenhöhe = Feldhöhe ohne Rahmen (Meldung iPhone 22.11.2026) */
 input[type=date]::-webkit-calendar-picker-indicator{margin:0;padding:0}
 
 
@@ -628,8 +650,8 @@ body[data-design=handy] .demo-band button,body[data-design=handy] .demo-band .bt
   body[data-design=web] .monat-grid .links{position:static}
 }
 @media (max-width:699px){
-  body[data-design=web]{padding-left:64px}
-  body[data-design=web] #seite{width:64px;padding:14px 8px;overflow-y:auto}
+  body[data-design=web]{--seite-b:64px;--karte-innen:var(--a-3);--kachel-innen:var(--a-3)}   /* 24 px ließen neben der Leiste zu wenig Platz für Auswahlfelder („Mecklenburg-Vorpommern“) */
+  body[data-design=web] #seite{padding:14px 8px;overflow-y:auto}
   body[data-design=web] .marke{justify-content:center;margin:2px 0 14px}
   body[data-design=web] .marke span{display:none}
   body[data-design=web] #seitennav :is(a,button){font-size:0;gap:0;justify-content:center;padding:12px 0;min-height:44px}
@@ -760,8 +782,8 @@ body[data-design=web]:is([data-seite=tag],[data-seite=woche],[data-seite=monat])
 body[data-design=web]:is([data-seite=tag],[data-seite=woche],[data-seite=monat]) #huelle > :is(header,.fuss){grid-column:1/-1}
 body[data-design=web]:is([data-seite=tag],[data-seite=woche],[data-seite=monat]) #huelle > main{grid-column:1}   /* die Leiste der laufenden Stempeluhr steht davor in Spalte 1; sonst rückt die Ansicht nach rechts und der Tag darunter */
 body[data-design=web]:is([data-seite=tag],[data-seite=woche],[data-seite=monat]) #huelle > :is(header,main){margin-inline:0;max-width:none}   /* Rastereintrag mit Rand auto würde schrumpfen */
-/* 120 px: Die Spalte beginnt unter dem Kopf rund 104 px tief; mit 100vh - 32px lag ihr Ende samt Speichern beim Öffnen 72 px unter dem Fensterrand */
-body[data-design=web] #tag-daneben:not([hidden]){position:sticky;top:16px;padding:8px 32px 24px 0;max-height:calc(100vh - 120px);display:flex;flex-direction:column}
+/* Die Spalte beginnt am Kopfende (--kopf-unten, anlauf.js): ein- oder zweizeilig je nach Breite; mit fest 120 px (Kopf 104 px) lag ihr Ende bei zweizeiligem Kopf unter dem Fensterrand */
+body[data-design=web] #tag-daneben:not([hidden]){position:sticky;top:16px;padding:8px 32px 24px 0;max-height:calc(100vh - var(--kopf-unten,104px) - 16px);display:flex;flex-direction:column}
 /* Die Karte rollt, nicht die Spalte: sonst schnitt der Spaltenrand die Karte ohne Rundung ab und Speichern lag bei 900 px Höhe unsichtbar darunter (Runde 2.8 D4c) */
 body[data-design=web] #tag-daneben:not([hidden])>.card{min-height:0;margin:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:0;scroll-padding-bottom:calc(2 * var(--h) + 48px)}   /* Meldung frei über der Knopfleiste, auch wenn sie zweizeilig ist (große Schrift) */
 body[data-design=web] #tag-daneben>.card>.knoepfe{position:sticky;bottom:0;background:var(--card-fest);border-top:1px solid var(--line);margin-top:14px;padding:14px 0 16px}   /* Speichern, Leeren, Abbrechen immer sichtbar, die Linie zeigt: darüber geht es weiter; deckend, die Glas-Farbe --card ließ den Vermerk durchscheinen */
@@ -797,6 +819,8 @@ body[data-design=web] #rueck:not([hidden]){left:calc(var(--seite-b) + (100% - va
 body:has(#rueck:not([hidden])) .fuss{padding-bottom:calc(var(--nav-platz,0px) + var(--rueck-h,56px) + 16px)}
 @keyframes rueck-ein{from{opacity:0;transform:translate(-50%,8px)}}
 @media (prefers-reduced-motion:reduce){#rueck:not([hidden]){animation:none}}
+/* Ein offenes Blatt verdeckt die Leiste (sie lag sonst über dem Titel der Rückfrage); ihre Uhr wartet, danach steht sie noch 15 s (rueckgaengig.js) */
+body:has(#blatt.auf) #rueck{display:none}
 /* Tag-Blatt (M2, design.md 3.17): Schnellwahl als Raster, „Mehr“ leise; „Einzelheiten“ zum Aufklappen; Vermerk als Segment mit Umbruch */
 .schnellwahl{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:12px 0}
 .schnellwahl button{min-height:44px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:15px;font-weight:600}
@@ -851,6 +875,16 @@ body[data-design] .card.leer{display:flex;flex-direction:column;align-items:cent
   .zeile>input[type=checkbox]:checked::after{background:HighlightText}
   :focus-visible{outline-style:solid!important;outline-width:3px!important;outline-color:Highlight!important}
 }
+/* ---- bausteine/gleitzeit_verlauf.css ---- */
+/* Gleitzeit-Verlauf (funktionen.md 11, design.md 3.17): Linie 2 px in der Bedienfarbe, Nulllinie, Grenzen gestrichelt 1,5 px rot mit Text; höchstens 480 px breit, sonst würde die Schrift im Bild zu groß */
+.gz-verlauf{display:block;width:100%;max-width:480px;height:auto;margin:8px 0;overflow:visible}
+.gz-verlauf .linie{fill:none;stroke:var(--acc-ui);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.gz-verlauf .null{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
+.gz-verlauf .grenze{stroke:var(--rot);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.gz-verlauf .heute{fill:var(--acc-ui)}
+.gz-verlauf .grenze-text{font-size:12px;fill:var(--tx-2)}
+.gz-verlauf .achse{font-size:12px;fill:var(--tx-3)}
+body[data-design=handy] .gz-verlauf{width:calc(100% - 32px)}   /* am Handy hat jede Karte innen 16 px Rand (grundlage.css), sonst ragt das Bild hinaus */
 /* ---- bausteine/reiter.css ---- */
 /* Zeiterfassung. © 2026 David Saluda. Alle Rechte vorbehalten. Erstellt mit Unterstützung von KI (Claude, Anthropic). */
 /* Reiter-Leiste unter dem Titel (#reiter, aufbau.md 3, design.md 3.6): Pillen-Leiste aus Glas, 44 px Tippfläche in beiden Designs.
@@ -906,11 +940,12 @@ body[data-design=handy] .dash .kachel>b{font-size:28px}
 .dash .zutun .knoepfe>.prim{flex:1 0 60%}   /* Hauptknopf in jeder Zeile gleich breit, sonst hing seine Breite an der Textlänge der Nachbarknöpfe */
 .dash .zutun li.zt-rot p{font-weight:600}
 .dash .zutun .knoepfe{margin:0}
-/* Übersicht am PC: vier Spalten; Monat und Jahr stehen neben Heute in einer Reihe (keine zwei Reihen hoch: die breite Karte „Zu tun“ darunter ließe sonst ein Loch) */
+/* Übersicht am PC: vier Spalten; Monat und Jahr stehen neben Heute in einer Reihe (keine zwei Reihen hoch: die breite Karte „Zu tun“ darunter ließe sonst ein Loch).
+   Nur im Web-Design: Im Handy-Design ist die Spalte auch im breiten Fenster höchstens 720 px breit, vier Spalten quetschten den Text der Kacheln */
 @media (min-width:1100px){
-  .dash{grid-template-columns:repeat(4,1fr)}
-  .dash .quote{justify-content:flex-start}
-  .dash .ring-klein{width:170px}
+  body[data-design=web] .dash{grid-template-columns:repeat(4,1fr)}
+  body[data-design=web] .dash .quote{justify-content:flex-start}
+  body[data-design=web] .dash .ring-klein{width:170px}
 }
 :is(.demo-angebot,#einrichtung) small{display:block;margin-top:6px;color:var(--tx-2)}
 #einrichtung #ei-titel:focus{outline:none}
@@ -927,8 +962,8 @@ body[data-design=handy] .dash .kachel>b{font-size:28px}
 .dash .heute-karte{grid-column:1/-1}
 .dash .krank-breit{grid-column:1/-1}                         /* letzte Kachel füllt ihre Reihe (bei zwei Spalten blieb daneben eine Zelle leer) */
 @media (min-width:1100px){
-  .dash .heute-karte{grid-column:span 2}
-  .dash .krank-breit{grid-column:span 2}
+  body[data-design=web] .dash .heute-karte{grid-column:span 2}
+  body[data-design=web] .dash .krank-breit{grid-column:span 2}
 }
 /* Jahreswechsel (Januar): wie „Zu tun“, erledigte Schritte mit Haken und gedämpft */
 .dash .jahreswechsel ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
@@ -982,14 +1017,18 @@ body[data-design=web] .monat-grid>*{min-width:0}
 /* Vorgabe 19.11.2026: zuerst das Raster, dann die Kennzahlen; zweispaltig steht das Raster links und die Kennzahlen rechts */
 @media (min-width:1512px){body[data-design=web][data-seite=monat] .monat-grid{grid-template-columns:minmax(0,1fr) 380px}}
 @media (min-width:1512px){
-  /* 300 px: Die Spalte beginnt beim Bildlauf 0 rund 236 px tief, mit laufender Stempeluhr 286 px; ohne Grenze endeten Stempeluhr und Monats-PDF
-     bei offener Jahres-Prognose (1920 × 900) bis 265 px unter dem Fensterrand */
-  body[data-design=web][data-seite=monat] .monat-grid .links{max-height:calc(100vh - 300px);display:flex;flex-direction:column;
-    animation:links-hoehe linear both;animation-timeline:scroll(root);animation-range:0 280px}   /* nach dem Rollen sitzt die Spalte oben (sticky): die Grenze für den Ausgangsstand ließ ~290 px darunter leer */
-  @keyframes links-hoehe{to{max-height:calc(100vh - 24px)}}
-  /* Die Karte rollt, nicht die Spalte: sonst schnitte der Spaltenrand die Karte ohne Rundung ab (wie bei der Tag-Spalte) */
-  body[data-design=web][data-seite=monat] .monat-grid .links>.card{min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:0}
-  body[data-design=web][data-seite=monat] .monat-grid .links .monat-schnell{position:sticky;bottom:0;background:var(--card-fest);border-top:1px solid var(--line);padding:14px 0 16px}   /* Stempeluhr, Heute eintragen, Monats-PDF immer sichtbar; deckend, das Glas --card ließe die Prognose durchscheinen */
+  /* Rückmeldung 22.11.2026: Die Karte rollt nie in sich (die Jahr-Box war abgeschnitten). Die Spalte klebt nur, wenn sie ins Fenster passt (monatKlebt):
+     Eine klebende Spalte, die höher ist als das Fenster, ließe Stempeluhr und Monats-PDF bis zum Ende der Liste unerreichbar; dann rollt sie mit der Seite */
+  body[data-design=web][data-seite=monat] .monat-grid .links:not(.klebt){position:static}
+  /* Stempeluhr, Heute eintragen, Monats-PDF in einer Zeile: die Karte bleibt niedriger */
+  body[data-design=web][data-seite=monat] .links .monat-schnell>*{flex:1 1 auto;padding-inline:8px;font-size:13px;text-align:center}   /* breitere Schrift (Terminal): dann bricht die Zeile um */
+}
+/* Sehr breit mit offener Jahres-Prognose: sie steht rechts neben den Kennzahlen statt darunter, so bleibt die Karte niedrig genug fürs Fenster (Rückmeldung 22.11.2026) */
+@media (min-width:1800px){
+  body[data-design=web][data-seite=monat] .monat-grid:has(details.jp-auf[open]){grid-template-columns:minmax(0,1fr) 740px}
+  body[data-design=web][data-seite=monat] .links>.card:has(>details.jp-auf[open]){display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto auto 1fr;column-gap:24px;align-items:start}
+  body[data-design=web][data-seite=monat] .links>.card:has(>details.jp-auf[open])>:not(details){grid-column:1}
+  body[data-design=web][data-seite=monat] .links>.card>details.jp-auf[open]{grid-column:2;grid-row:1/-1;margin-top:0}
 }
 @media (max-width:1511px){body[data-design=web][data-seite=monat] .monat-grid{grid-template-columns:minmax(0,1fr)}body[data-design=web][data-seite=monat] .monat-grid .links{position:static}}
 /* ---- seiten/woche.css ---- */
@@ -998,15 +1037,13 @@ body[data-design=handy] .kw-kopf{white-space:nowrap;line-height:1.2}
 .kw-kopf .kw-nr{color:var(--acc-fg)}
 /* Der Zeitraum „16.11. – 22.11.2026“ bricht nicht nach dem Strich um (Web 768 px neben der Seitenleiste) */
 .kw-kopf .kw-zeit{font-weight:400;color:var(--tx);white-space:nowrap}
-/* Gleitzeit-Verlauf (funktionen.md 11, design.md 3.17): Linie 2 px in der Bedienfarbe, Nulllinie, Grenzen gestrichelt 1,5 px rot mit Text; höchstens 480 px breit, sonst würde die Schrift im Bild zu groß */
-.gz-verlauf{display:block;width:100%;max-width:480px;height:auto;margin:8px 0;overflow:visible}
-.gz-verlauf .linie{fill:none;stroke:var(--acc-ui);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
-.gz-verlauf .null{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
-.gz-verlauf .grenze{stroke:var(--rot);stroke-width:1.5;vector-effect:non-scaling-stroke}
-.gz-verlauf .heute{fill:var(--acc-ui)}
-.gz-verlauf .grenze-text{font-size:12px;fill:var(--tx-2)}
-.gz-verlauf .achse{font-size:12px;fill:var(--tx-3)}
-body[data-design=handy] .gz-verlauf{width:calc(100% - 32px)}   /* am Handy hat jede Karte innen 16 px Rand (grundlage.css), sonst ragt das Bild hinaus */
+/* Wochenziel (Wunsch 22.11.2026): Balken Ist von Soll der Woche; die Zahl steht als Text daneben, die Farbe ist nur Zusatz */
+.wz{position:relative;height:10px;border-radius:999px;background:var(--line);overflow:hidden;margin:8px 0 2px}
+/* Marke „Soll bis heute“: senkrechter Strich in Textfarbe, damit sie auf Grün und Grau sichtbar bleibt */
+.wz-marke{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--tx)}
+.wz-heute span{color:var(--tx-2)}
+.wz i{display:block;height:100%;background:var(--ok);border-radius:999px}
+.wz-satz{margin:4px 0 8px;font-weight:600;color:var(--tx)}
 /* ---- seiten/horest.css ---- */
 .mit-hilfe{display:inline-flex;align-items:center;gap:6px}
 /* In der Zeile fließt das Label als Text: bricht es um, steht das „?“ direkt hinter dem letzten Wort statt am Wert */
@@ -1065,6 +1102,8 @@ table.jahr-tab tr.vor-beginn td{color:var(--mut)}
 table.jahr-tab tr.vor-beginn td[colspan]{text-align:center}
 /* Ohne Homeoffice-Modul fehlt der Ring: „2026 gesamt“ steht dann links wie am Handy, nicht allein in der Mitte (Runde 2.8 D4c) */
 body[data-design=web] .jahr-karte .hero:not(:has(.ring)){justify-content:flex-start}
+/* Jahresrückblick: Summen in einer Reihe (zwei bis vier Kacheln je nach Homeoffice-Modus und Modul Krank), statt einer vierten Kachel allein in der zweiten Reihe */
+.jahr-karte .raster{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:1fr}
 /* ---- seiten/urlaub.css ---- */
 /* Passt die Beschriftung nicht ungebrochen neben die Eingabe (375 px: „Jahresans/pruch“), rutscht die Eingabe rechtsbündig in die zweite Reihe */
 .zeile:has(>.eingabe){flex-wrap:wrap;row-gap:var(--a-2)}
@@ -1079,7 +1118,6 @@ body[data-design=web] .jahr-karte .hero:not(:has(.ring)){justify-content:flex-st
 .btn.aus{opacity:.45;pointer-events:none}
 /* Urlaubsplanung: Datumsfelder am iPhone mittig, Knopfreihen einheitlich */
 #pl-von,#pl-bis{line-height:calc(var(--h) - 2px);padding-top:0;padding-bottom:0;display:block}
-#pl-von::-webkit-date-and-time-value,#pl-bis::-webkit-date-and-time-value{line-height:calc(var(--h) - 2px);min-height:0}
 /* Planen-Blatt (M3): Monats-Raster mit 7 Spalten (Tippflächen mind. 44 px), Monat blättern, gewählter Zeitraum */
 .plan-monat{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0 6px}
 .plan-monat button{min-width:44px;min-height:44px}
@@ -1098,6 +1136,8 @@ body[data-design=web] .jahr-karte .hero:not(:has(.ring)){justify-content:flex-st
 #pl-art button{flex:1 1 auto}
 /* Hinweis unter den Karten gehört zu ihnen: dicht darunter, zur Planung darunter der Kartenabstand */
 .hinweis.nach-karten{margin-top:-4px;margin-bottom:14px}
+/* Brückentage: Vorschlag als ganze Zeile zum Antippen (mind. 44 px), Text links und umbrechend */
+.zeile.bruecke{width:100%;min-height:44px;text-align:left;justify-content:flex-start;white-space:normal}
 /* ---- seiten/krank.css ---- */
 /* Krankheit */
 .krank-kacheln{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px}
@@ -1140,7 +1180,9 @@ body[data-seite=steuer] .zeile.zeitraum{flex-wrap:wrap;row-gap:2px}
 body[data-seite=steuer] .zeile.zeitraum>span{flex:1 1 16em}
 body[data-seite=steuer] .zeile.zeitraum>b{white-space:normal}
 /* ---- seiten/export.css ---- */
-.feld-heute{display:flex;gap:8px;align-items:center}.feld-heute>input,.feld-heute>select{flex:1;min-width:0}
+.feld-heute{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.feld-heute>input{flex:1;min-width:0}
+/* Auswahl nie schmaler als ihr längster Eintrag (Chrome kürzt ihn sonst ohne Punkte), „Heute“ rückt dann in die nächste Zeile */
+.feld-heute>select{flex:1 1 auto;width:auto;max-width:100%}
 /* Unterzeile „Vorschau“ über der Tabelle einer Export-Karte; am Handy rückt sie wie die übrigen Kinder der Karte ein */
 .vorschau-titel{margin:14px 0 0;font-size:13px;font-weight:600;color:var(--mut)}
 body[data-design=handy] .card>.vorschau-titel{margin-left:16px;margin-right:16px}
@@ -1151,26 +1193,36 @@ body[data-design=web][data-seite=monatsnachweis] #stempel-banner{max-width:var(-
 /* Titel und „Erstellt am“ wie im PDF, kleiner als der Seitentitel; am Handy rücken sie wie die übrigen Kinder der Karte ein */
 .nachweis-titel{margin:14px 0 0;font-size:20px;font-weight:700}
 .nachweis-datum{margin:2px 0 10px;font-size:13px;color:var(--mut)}
-body[data-design=handy] .card>:is(.nachweis-titel,.nachweis-datum,.nachweis-zeichen){margin-left:16px;margin-right:16px}
+body[data-design=handy] .card>:is(.nachweis-titel,.nachweis-datum,.nachweis-unterschrift){margin-left:16px;margin-right:16px}
 /* Freie Tage (Wochenende, Feiertag) grau wie im PDF (dokument.Zeile.frei); Werktage ohne Arbeit bei Teilzeit bleiben weiß (U23) */
 .nachweis tr.frei td{background:var(--frei);color:var(--mut)}
 /* Anmerkung und Werte links bündig; ein Wort, das auch in der engen Darstellung nicht passt (130 % Schrift), bricht als Rückfall um, mit Trennstrich wo das Wörterbuch da ist; Gehen nach Mitternacht „02:00 (+1)“ darf vor der Klammer umbrechen */
 .nachweis :is(td,th).anm{text-align:left;white-space:normal;overflow-wrap:anywhere;hyphens:auto}
 .nachweis td.geh{white-space:normal}
+/* Anmerkung neben den Zeiten nie schmaler als 7 em (drei Zeilen für „Gleittag (Überstundenabbau)“, am Handy 360 px rollt nichts) (bei 360 px schrumpfte sie auf 10 px, ein Buchstabe je Zeile); reicht die Karte nicht, rollt die Tabelle (unten) */
+.nachweis.mit-zeiten td.anm{min-width:7em}
 /* Sechs Spalten mit Beginn und Ende passen in eine schmale Karte (Handy 375 px, Web 768 px neben der Seitenleiste) nur mit engerem Abstand und kleinerem Kopf; maßgeblich ist darum die Breite der Tabelle, nicht des Fensters */
 .tbl:has(>.nachweis.mit-zeiten){container-type:inline-size}
 @container (max-width:479px){.nachweis.mit-zeiten{font-size:13px}.nachweis.mit-zeiten :is(th,td){padding-left:2px;padding-right:2px}
   .nachweis.mit-zeiten th{font-size:11px;text-transform:none;letter-spacing:0}.nachweis.mit-zeiten td.anm{font-size:11px}}
 /* Reichen auch die festen Spalten (Zeiten) nicht (130 % Schrift), rollt die Tabelle in ihrem Rahmen, statt die Seite zu weiten */
 body[data-seite=monatsnachweis] .tbl{overflow-x:auto}
-/* Datum und Unterschrift am Ende der Vorschau */
-.nachweis-zeichen{margin:14px 0 0;font-size:14px;color:var(--mut)}
-body[data-design=handy] .card>.nachweis-zeichen:last-child{margin-bottom:16px}
+/* Unterschriften am Ende der Vorschau wie im PDF: Ort und Datum schmal, Unterschrift breit (mit Vorgesetzter/Vorgesetzte drei gleiche Spalten);
+   Platz über der Linie zum Unterschreiben, darunter klein die Beschriftung und der Name. In einer schmalen Karte untereinander. */
+.nachweis-unterschrift{display:grid;grid-template-columns:1fr 2fr;gap:18px;margin:18px 0 0}
+.nachweis-unterschrift.drei{grid-template-columns:repeat(3,1fr)}
+.nu-spalte{display:flex;flex-direction:column;min-width:0}
+.nu-wert{min-height:56px;display:flex;align-items:flex-end;padding-bottom:2px;border-bottom:1px solid var(--tx);overflow-wrap:anywhere}
+.nu-spalte small{font-size:12px;color:var(--mut);margin-top:3px}
+.nu-spalte b{font-size:14px;overflow-wrap:anywhere;min-height:1.3em}
+.card:has(>.nachweis-unterschrift){container-type:inline-size}
+@container (max-width:479px){.nachweis-unterschrift,.nachweis-unterschrift.drei{grid-template-columns:1fr}}
+body[data-design=handy] .card>.nachweis-unterschrift:last-child{margin-bottom:16px}
 /* ---- seiten/sicherung.css ---- */
-/* Dateiauswahl als normaler Knopf, Dateiname daneben (bricht bei langen Namen um) */
-.knoepfe.dateiwahl{align-items:center;flex-wrap:nowrap}
+/* Dateiauswahl als normaler Knopf, Dateiname daneben; bleiben dort keine 10 em, steht er darunter (bei 360 px stand er sonst Silbe für Silbe untereinander) */
+.knoepfe.dateiwahl{align-items:center;flex-wrap:wrap}
 .knoepfe.dateiwahl button{flex:none}
-.knoepfe.dateiwahl span{min-width:0;font-size:14px;color:var(--mut,inherit);opacity:.85;overflow-wrap:anywhere}
+.knoepfe.dateiwahl span{flex:1 1 10em;min-width:0;font-size:14px;color:var(--mut,inherit);opacity:.85;overflow-wrap:anywhere}
 /* Daten prüfen: Liste der Funde, Schwere als Zeichen vor dem Text (nie nur Farbe); jede Zeile mindestens 44 px hoch zum Antippen */
 #pruefen-karte{margin-bottom:14px}
 body[data-design=web] .knoepfe+#app-pruefen-ergebnis>.fehler{margin-top:16px}   /* wie in Sync: Ergebnis nicht am Knopf */
@@ -1240,7 +1292,7 @@ body[data-design=web] .knoepfe+#sync-meldung>.fehler{margin-top:16px}
 body[data-design=handy] .card>.tage-wahl{margin-left:16px;margin-right:16px}
 /* Eigene Akzentfarbe */
 .farben{flex-wrap:wrap;align-items:center}
-.modus input[type=date]::-webkit-date-and-time-value{min-height:calc(var(--h) - 12px)}   /* iOS: Datum mittig statt oben (Meldung vom 17.11.2026); die Höhe füllt das Feld ohne Rand und Innenabstand */
+.modus input[type=date],.modus input[type=date]::-webkit-date-and-time-value{line-height:calc(var(--h) - 12px)}   /* iOS: Datum mittig statt oben; das Feld ist hier 10 px niedriger als --h */
 .modus input[type=date]{width:auto}
 /* Vorschau der eigenen Akzentfarbe */
 .hexfeld{position:relative}
@@ -1293,11 +1345,23 @@ body[data-design=handy] .card>.pausen-stufen{margin-left:16px;margin-right:16px}
 .je-tag{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
 @media (max-width:479px){.je-tag{grid-template-columns:repeat(3,minmax(0,1fr))}}   /* am Handy drei je Reihe: fünf nebeneinander schnitten „04:00“ ab */
 .je-tag label{margin-top:4px}
-@media (max-width:479px){.reihe.kind-krank{grid-auto-flow:row;grid-template-rows:none;grid-template-columns:minmax(0,1fr)}}   /* Kind krank am Handy untereinander: neben „Eigener Wert“ las man nur „Gesetzlich vers“ */
+/* Kind krank untereinander, sobald die Karte für das Dienstverhältnis neben „Eigener Wert“ zu schmal ist: am Handy las man nur „Gesetzlich vers“,
+   bei 768 px am Rechner „Beamte in Bayern (§“. Gemessen an der Karte in ihrer Schrift (em), so stimmt es auch bei großer Schrift.
+   Ebenso Wochenstunden und Homeoffice, sobald „kein Homeoffice“ neben dem Zähler nicht mehr ganz zu lesen ist (Handy bis 390 px) */
+.card:has(#kk-dienst){container:regelkarte/inline-size}
+@container regelkarte (max-width:46em){.reihe.kind-krank{grid-auto-flow:row;grid-template-rows:none;grid-template-columns:minmax(0,1fr)}}
+@container regelkarte (max-width:23em){.reihe:has(#r-hm){grid-auto-flow:row;grid-template-rows:none;grid-template-columns:minmax(0,1fr)}}
 .seg[data-n=thema]{flex-wrap:wrap}
 /* Sechs Stile als 6×1 oder 3×2, nie 5+1 (Terminal bei 768 px): Die Grenze misst die Karte in ihrer Schrift (em), so stimmt sie auch bei großer Schrift */
 .card:has(>.seg[data-n=thema]){container:stilwahl/inline-size}
 @container stilwahl (max-width:30em){.seg[data-n=thema] button{flex:1 1 calc(100% / 3 - 4px)}}
+/* Übersicht anordnen: Name, Pfeilknöpfe (je 44 px, auch gegen die Knopfhöhe des Designs) und Schalter in einer Zeile */
+.anordnen{list-style:none;margin:4px 0 0;padding:0}
+.anordnen>.zeile>span:first-child{flex:1;min-width:0}
+.anordnen .pfeile{display:flex;gap:6px;flex:none}
+body[data-design] .anordnen button{min-width:44px;min-height:44px;height:44px;padding:0;display:inline-flex;align-items:center;justify-content:center}
+.anordnen button:disabled{opacity:.4}
+.anordnen .ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 /* ---- seiten/hilfe.css ---- */
 /* Hilfe & FAQ */
 details.faq{border-top:1px solid var(--line);padding:2px 0}
@@ -1308,18 +1372,40 @@ details.faq summary::after{content:"›";position:absolute;right:4px;top:50%;tra
 details.faq[open] summary::after{transform:translateY(-50%) rotate(-90deg)}
 details.faq>div{padding:0 0 14px;color:var(--tx);line-height:1.5;font-size:15px}
 details.faq>div p{margin:0}
+details.faq>div p+p,details.faq>div :is(ul,ol)+p{margin-top:8px}   /* Absätze mit Abstand, sonst wirken sie wie Zeilen mit <br> */
 details.faq ol{margin:0;padding-left:20px}
 details.faq li{margin:4px 0}
-/* Schalter „Leichte Sprache“: Knopf mit Stand (aria-pressed), Satz daneben; Fläche mindestens 44 px hoch */
-.hilfe-schalter{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0 16px 10px}
-.hilfe-schalter p{margin:0;flex:1 1 200px}
-button.hilfe-leicht,button.lizenz-knopf{min-height:44px;padding:0 18px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--tx);font:inherit;font-weight:600;cursor:pointer}
-button.hilfe-leicht[aria-pressed="true"]{background:var(--acc-bg);border-color:var(--acc-ui);color:var(--acc-fg,var(--acc))}
-/* Fremde Bausteine und Lizenzen: Knöpfe je Lizenztext, darunter der Text unverändert (Zeilen bleiben, lange Wörter brechen) */
-.lizenz-dateien{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
-.lizenz-dateien:empty{display:none}
-details.faq .lizenz-dateien{margin:8px 0}   /* gegen „details.faq>div p{margin:0}“: sonst stoßen die Zeilen der Knöpfe aneinander */
-.lizenz-text{white-space:pre-wrap;overflow-wrap:anywhere;max-height:60vh;overflow:auto;margin:8px 0 0;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:13px;line-height:1.4}
+button.lizenz-knopf{min-height:44px;padding:0 18px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--tx);font:inherit;font-weight:600;cursor:pointer}
+/* Fremde Bausteine und Lizenzen: je Fassung eine Liste, je Baustein eine Zeile (am Handy untereinander, breit Angaben links, Knöpfe rechts) */
+details.faq h3.lizenz-gruppe{margin:16px 0 4px;font-size:16px}
+.lizenz-liste{list-style:none;margin:0;padding:0}
+details.faq li.lizenz-teil{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 14px;margin:0;padding:10px 0;border-top:1px solid var(--line)}
+.lizenz-teil{overflow-wrap:anywhere}
+.lizenz-angaben{display:flex;flex-direction:column;gap:2px;flex:1 1 240px;min-width:0}
+.lizenz-angaben .hinweis,.lizenz-knoepfe .hinweis{margin:0}
+.lizenz-knoepfe{display:flex;flex-wrap:wrap;gap:8px}
+.lizenz-uebersicht>p.hinweis{margin-top:12px}
+/* Lizenztext im Blatt: Zeilen und Einrückung bleiben, lange Wörter brechen; das Blatt rollt, „Schließen“ bleibt oben stehen */
+.lizenz-oben{--blatt-oben:18px;position:sticky;top:calc(-1 * var(--blatt-oben));margin-top:calc(-1 * var(--blatt-oben));padding:var(--blatt-oben) 0 8px;background:var(--card-fest);z-index:1}   /* Titel und Schließen decken beim Rollen auch den Innenabstand oben des Blatts; deckend, sonst schimmert der Text durch */
+.lizenz-oben .knoepfe{margin-top:8px}
+body[data-design=handy] .lizenz-oben{--blatt-oben:26px}
+body[data-design=handy] #blatt .inh:has(.lizenz-oben)::before{z-index:2}   /* Griff des Blatts über dem Kopf */
+/* Lizenztext am Rechner breiter: Tabellen darin (Python-Lizenz, 64 Zeichen) passen auch in Festbreitenschrift (Stil Terminal) ohne Umbruch */
+body[data-design=web] #blatt .inh:has(.lizenz-text){max-width:min(760px, calc(100vw - 32px))}   /* bei 768 px Fenster sonst nur 4 px Rand */
+.lizenz-text{white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 0;font-size:15px;line-height:1.5;font-family:inherit}
+/* Hilferunde 23.11.2026: Rückweg oben, Suchfeld, Gruppen als Zwischenüberschriften, Weg und Wiki-Link je Abschnitt */
+.hilfe-rueck{margin:0 0 8px}
+body[data-design=handy] .card>.hilfe-rueck{margin-top:12px}   /* Handy-Karten haben oben keinen Innenabstand */
+.hilfe-suche{margin:4px 0 8px}
+.hilfe-suche label{margin-top:0}
+#hilfe-suche{min-height:44px}
+#hilfe-leer{margin:12px 0 4px;color:var(--tx-2)}
+#hilfe-leer:empty{display:none}
+.hilfe-gruppe h3{margin:20px 0 2px;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--tx-2)}
+.hilfe-gruppe[hidden],details.faq[hidden]{display:none}
+details.faq{scroll-margin-top:72px}   /* beim Sprung über „?“ nicht unter der Kopfleiste (Handy, sticky) */
+details.faq>div p.hilfe-weg{margin-top:8px}
+details.faq>div p.hilfe-wiki{margin-top:6px}
 /* ---- themen/flaechig.css ---- */
 /* Zeiterfassung. © 2026 David Saluda. Alle Rechte vorbehalten. Erstellt mit Unterstützung von KI (Claude, Anthropic). */
 /* Stil „Flächig“: getönte Flächen aus dem Akzent statt Glas, Höhe über die Tönung statt Schatten, Pillen-Knöpfe, Radien 12/16/28, Schrift 400/500.

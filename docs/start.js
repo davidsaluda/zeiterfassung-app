@@ -13,6 +13,8 @@
   const PERSON_MUSTER = /^[0-9a-z-]{1,40}$/;                 // IDs des Anmeldedienstes; dasselbe Muster prüft kern.js
   const MERKER_ANMELDUNG = "ho_mit_anmeldung";
   const MERKER_ALT = "ho_person";                            // merkt sich die Oberfläche (grundlage.js) schon länger: Geräte von vor dem Update haben nur diesen
+  const WEITER = "weiter";                                   // Bitte an ein wartendes Dienst-Skript, zu übernehmen (sw.js)
+  const UEBERNAHME_MS = 8000;
   const tafel = document.createElement("div");
   tafel.id = "start";
   tafel.setAttribute("role", "status");
@@ -103,7 +105,6 @@
       await new Promise(ok => { navigator.serviceWorker.addEventListener("controllerchange", ok, { once: true }); setTimeout(ok, 8000); });
       if (!eigenerDienst()) { location.reload(); await new Promise(() => {}); }
     }
-    if (hatte) navigator.serviceWorker.addEventListener("controllerchange", neueVersion, { once: true });
   }
   // Zeigt unten eine Leiste mit Meldung und Knopf, der die Seite neu lädt (nur eine Leiste zugleich).
   function leisteZeigen(meldung, knopf) {
@@ -119,8 +120,15 @@
     leiste.append(t, b);
     document.body.appendChild(leiste);
   }
-  // Weist darauf hin, dass eine neue Version geladen ist.
-  const neueVersion = () => leisteZeigen("Eine neue Version der App ist geladen.", "Jetzt neu starten");
+  // Beim Start läuft noch nichts (kein Rechenkern, keine Eingabe): Wartet ein neues Dienst-Skript (geladen, während die App offen war),
+  // übernimmt es jetzt. Rückgabe true, wenn es übernommen hat (dann neu laden); ohne Wechsel binnen UEBERNAHME_MS false, damit die Seite nie endlos neu lädt.
+  async function wartendeUebernehmen() {
+    const wartend = eigenerDienst() && (await navigator.serviceWorker.getRegistration())?.waiting;
+    if (!wartend) return false;
+    const uebernommen = new Promise(ok => { navigator.serviceWorker.addEventListener("controllerchange", () => ok(true), { once: true }); setTimeout(() => ok(false), UEBERNAHME_MS); });
+    wartend.postMessage(WEITER);
+    return uebernommen;
+  }
   // Scheitert ein Update (Datei fehlt, Summe passt nicht, Virenschutz ändert eine Datei), liefe still die alte Fassung weiter, ohne ihre Korrekturen
   function updateBeobachten(reg) {
     const beobachten = w => w && w.addEventListener("statechange", () => {
@@ -149,6 +157,7 @@
     // Nur ein Fenster darf mit der Datenbank arbeiten: Zwei Fenster würden sich gegenseitig den Stand überschreiben.
     const frei = await new Promise(ok => navigator.locks.request("zeiterfassung-daten", { ifAvailable: true }, sperre => { ok(!!sperre); return sperre ? new Promise(() => {}) : undefined; }));
     if (!frei) return halt("Die App ist schon in einem anderen Fenster offen. Bitte dort weiterarbeiten oder das andere Fenster schließen.");
+    if (await wartendeUebernehmen()) return location.reload();   // erst nach der Sperre: Ein zweites Fenster bekäme sonst mitten in der Arbeit die neue Version
     const t0 = performance.now();
     // Erster Start: erst das Dienst-Skript einrichten (es prüft jede Datei gegen die Summe aus dem Bau), dann den Rechenkern daraus laden.
     // Sonst käme der Rechenkern ungeprüft und ein zweites Mal aus dem Netz.
@@ -167,9 +176,9 @@
       s.onerror = () => fehler(new Error(LADEFEHLER));       // die Skripte danach führt der Browser trotzdem aus; die Fehlertafel erscheint
       document.body.appendChild(s);
     }))) : Promise.reject(new Error(LADEFEHLER));
-    // Erster Start: Die Oberfläche lädt übers Netz gleichzeitig mit dem Rechenkern (gemessen rund 0,4 s schneller); ihre Anfragen warten
-    // im Dienst-Skript, bis er bereit ist. Später kommt sie aus dem Lager; dann bremst frühes Laden den Rechenkern (gemessen rund 0,13 s).
-    const frueh = erst && !selbsttest ? oberflaecheLaden() : null;
+    // Die Oberfläche lädt gleichzeitig mit dem Rechenkern; ihre Anfragen warten im Dienst-Skript, bis er bereit ist.
+    // Gemessen (22.11.2026, 4× gedrosselt): Folgestart rund 1,4 s schneller, seit der Rechenkern als Bytecode kommt; beim ersten Start rund 0,4 s.
+    const frueh = selbsttest ? null : oberflaecheLaden();
     frueh?.catch(() => {});
     if (!erst) await dienstAnmelden();
     const kernMs = await bereit;
