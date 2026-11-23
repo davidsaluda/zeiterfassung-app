@@ -4,17 +4,17 @@
 // 1. Alle Programmdateien im Gerät behalten, damit die App ohne Internet startet. Geladen wird nur von der eigenen Adresse.
 // 2. Anfragen der Oberfläche („api/…“) nicht ins Netz schicken, sondern an die Seite geben; dort rechnet Python im Gerät (start.js, kern.js).
 // VERSION und DATEIEN setzt web_bauen.py ein (Datei -> Kurzform ihrer SHA-256-Summe).
-const VERSION = "20261123.0553";
+const VERSION = "20261123.1730";
 const DATEIEN = {
- "app.zip": "68e742483f03a8a9",
- "buendel.css": "d5947944c2c26326",
- "buendel.js": "d619a0497ee8907b",
+ "app.zip": "9706b34163f10ecc",
+ "buendel.css": "b8a9fefe137b00b9",
+ "buendel.js": "6c87c2b5ac750b31",
  "icon-180.png": "fde9a08b04e87a26",
  "icon-192.png": "96cb413dec9a6aa3",
  "icon-512.png": "bcdaded6225901de",
  "icon-maskable-512.png": "2f537b32a49ba198",
  "icon.svg": "87e078fd4cfa21bb",
- "index.html": "eedfa05e82e1dad2",
+ "index.html": "47b540dd2d3e16f6",
  "kern.js": "841ae2452be83722",
  "lizenzen/Apache-2.0.txt": "7d5450cb2d142651",
  "lizenzen/Chaquopy-LICENSE.txt": "345a9fdfeed355d3",
@@ -61,15 +61,28 @@ const DATEIEN = {
  "start-430x932-3-dunkel.png": "5e9bf8a4b96c479e",
  "start-440x956-3-dunkel.png": "dda310521b29f319",
  "start.css": "3d984efe7b717848",
- "start.js": "0b1c1e8b23af716c"
+ "start.js": "e71419da474e1eef"
 };
 const LAGER = "zeiterfassung-" + VERSION;
 const BASIS = new URL("./", self.location.href).pathname;
 const NICHT_BEREIT = "Die App ist nicht bereit. Bitte die Seite neu laden.";
-const WARTEN_MS = 120000;
+const WARTEN_MS = 120000;                    // Schreibzugriffe und Anfragen, während der Rechenkern noch lädt (erster Start, rund 9 MB)
+const WARTEN_GET_MS = 20000;                 // Lesen bei laufendem Rechenkern: Hängt er, erscheint bald „Neu laden“ statt zwei Minuten nichts
+const WARTET = "wartet";                     // Meldung der Seite (start.js): Der Rechenkern lädt noch, die Anfrage wartet zu Recht länger
+const KOPF_WARTEN_MS = 15000;                // Netz-Abruf: höchstens so lange bis zur Antwort (Kopf); der Körper darf länger dauern
 
 // Name, unter dem eine Datei im Lager liegt (Pfad plus Kurzsumme).
 const lagerName = datei => BASIS + datei + "?h=" + DATEIEN[datei];
+
+// Lädt aus dem Netz mit Zeitlimit nur bis zur Antwort (Kopf): Ein Netz ohne Antwort hängt nicht ewig, der Download großer Dateien
+// (Rechenkern, Mobilfunk) wird danach nicht abgebrochen, weil die Frist mit der Antwort endet.
+// Ältere WebKit- und Chrome-Fassungen lehnen einen Seitenaufruf mit Zusatzangaben ab (TypeError „navigate mode“): dann ohne Frist wie früher.
+async function holen(anfrage, optionen) {
+  const ab = new AbortController(), zeit = setTimeout(() => ab.abort(), KOPF_WARTEN_MS);
+  try { return await fetch(anfrage, { ...optionen, signal: ab.signal }); }
+  catch (e) { if (e instanceof TypeError && anfrage.mode === "navigate") return fetch(anfrage); throw e; }
+  finally { clearTimeout(zeit); }
+}
 
 // Nur einlagern, was zur Summe aus dem Bau passt: weder eine beschädigte Übertragung noch ein fremder Eintrag im Lager dieser Adresse wird Teil der App.
 // Ausnahme Startseite: Schutzprogramme auf dem Rechner (Virenschutz mit Web-Schutz) schreiben in HTML-Seiten hinein; die App ließe sich dort sonst nie einrichten.
@@ -89,7 +102,7 @@ async function einlagern() {
     let antwort = datei === "index.html" ? null : await caches.match(name);
     let gut = !!antwort && await passt(datei, antwort);
     if (!gut) {
-      antwort = await fetch(BASIS + (datei === "index.html" ? "" : datei), { cache: "no-cache" });
+      antwort = await holen(BASIS + (datei === "index.html" ? "" : datei), { cache: "no-cache" });
       if (!antwort.ok) throw new Error("Datei fehlt: " + datei);
       gut = await passt(datei, antwort);
     }
@@ -113,12 +126,19 @@ self.addEventListener("activate", ev => ev.waitUntil((async () => {
 // Fehlerantwort als JSON, nicht zwischenspeichern.
 const jsonAntwort = (status, text) => new Response(JSON.stringify({ fehler: text }), { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
 
-// Fragt das Fenster der App über einen eigenen Kanal und wartet höchstens WARTEN_MS auf die Antwort.
+// Fragt das Fenster der App über einen eigenen Kanal und wartet auf die Antwort: bei GET der Oberfläche höchstens WARTEN_GET_MS; bei Schreibzugriffen,
+// Downloads (Seitenaufruf, z. B. Jahres-PDF, rechnet länger) und solange die Seite WARTET meldet (Rechenkern lädt noch oder ist belegt) höchstens WARTEN_MS.
 function fragen(fenster, nachricht) {
   return new Promise((ok, fehler) => {
     const kanal = new MessageChannel();
-    const zeit = setTimeout(() => fehler(new Error("Zeit")), WARTEN_MS);
-    kanal.port1.onmessage = ev => { clearTimeout(zeit); ev.data && !ev.data.fehler ? ok(ev.data) : fehler(new Error("Fehler")); };
+    let zeit = 0;
+    // Stellt die Frist neu auf ms.
+    const frist = ms => { clearTimeout(zeit); zeit = setTimeout(() => fehler(new Error("Zeit")), ms); };
+    frist(nachricht.methode === "GET" && !nachricht.navigate ? WARTEN_GET_MS : WARTEN_MS);
+    kanal.port1.onmessage = ev => {
+      if (ev.data === WARTET) return frist(WARTEN_MS);
+      clearTimeout(zeit); ev.data && !ev.data.fehler ? ok(ev.data) : fehler(new Error("Fehler"));
+    };
     fenster.postMessage(nachricht, [kanal.port2]);
   });
 }
@@ -135,7 +155,7 @@ async function anPython(ev, pfad) {
   // Ein Download ist eine neue Seite ohne eigenes Fenster: dann antwortet das offene Fenster der App.
   const fenster = eigenes ? [eigenes] : await self.clients.matchAll({ type: "window" });
   if (!fenster.length) return jsonAntwort(503, NICHT_BEREIT);
-  const nachricht = { art: "anfrage", methode: anfrage.method, pfad, typ: anfrage.headers.get("Content-Type") || "", koerper };
+  const nachricht = { art: "anfrage", methode: anfrage.method, navigate: anfrage.mode === "navigate", pfad, typ: anfrage.headers.get("Content-Type") || "", koerper };
   try {
     const a = await Promise.any(fenster.map(f => fragen(f, nachricht)));
     const kopf = new Headers();
@@ -153,5 +173,5 @@ self.addEventListener("fetch", ev => {
   if (datei.startsWith("api/") || datei === "health") return ev.respondWith(anPython(ev, "/" + datei + url.search));
   const name = datei || "index.html";
   if (ev.request.method === "GET" && Object.prototype.hasOwnProperty.call(DATEIEN, name))
-    ev.respondWith(caches.open(LAGER).then(l => l.match(lagerName(name))).then(a => a || fetch(ev.request)));
+    ev.respondWith(caches.open(LAGER).then(l => l.match(lagerName(name))).then(a => a || holen(ev.request)));
 });

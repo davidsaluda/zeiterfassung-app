@@ -48,7 +48,7 @@ Alle Fassungen sind dieselbe App mit derselben Oberfläche. Den Link zu den Apps
 | Synchronisieren über ein eigenes privates GitHub-Repo (alle Geräte) | [Synchronisieren über GitHub](https://github.com/davidsaluda/zeiterfassung-app/wiki/GitHub-Synchronisieren) |
 | Synchronisieren mit dem eigenen Server | [Server (Docker): Geräte synchronisieren](https://github.com/davidsaluda/zeiterfassung-app/wiki/Server-Docker-Synchronisieren) |
 
-Fragen und Fehler: [Wiki → Fragen und Fehler](https://github.com/davidsaluda/zeiterfassung-app/wiki/Fragen-und-Fehler). Was die App sendet und wo die Daten liegen: [Wiki → Datenschutz](https://github.com/davidsaluda/zeiterfassung-app/wiki/Datenschutz). In dieses öffentliche Repo schreibt die App nie etwas, es gibt hier keine Zeiten und keine Namen.
+Fragen und Fehler: [Wiki → Fragen und Fehler](https://github.com/davidsaluda/zeiterfassung-app/wiki/Fragen-und-Fehler). Was die App sendet und wo die Daten liegen: [Wiki → Datenschutz](https://github.com/davidsaluda/zeiterfassung-app/wiki/Datenschutz). Datenschutzerklärung der Web-App bei GitHub Pages: [Datenschutz](https://davidsaluda.github.io/zeiterfassung-app/datenschutz.html). In dieses öffentliche Repo schreibt die App nie etwas, es gibt hier keine Zeiten und keine Namen.
 
 ## Für die Person, die dieses Repo betreibt
 

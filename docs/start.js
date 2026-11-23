@@ -10,11 +10,18 @@
   const ERSTER_START = "Die App wird einmalig auf dieses Gerät geladen. Danach startet sie auch ohne Internet.";
   const NICHT_ANGEMELDET = "Deine Anmeldung ist abgelaufen. Tippe auf „Anmelden“ und melde dich neu an. Deine Einträge bleiben auf diesem Gerät.";
   const NICHT_BEREIT = "Die App ist nicht bereit. Bitte die Seite neu laden.";
+  const WARTET = "wartet";                    // an das Dienst-Skript (sw.js): Der Rechenkern lädt noch
   const PERSON_MUSTER = /^[0-9a-z-]{1,40}$/;                 // IDs des Anmeldedienstes; dasselbe Muster prüft kern.js
   const MERKER_ANMELDUNG = "ho_mit_anmeldung";
   const MERKER_ALT = "ho_person";                            // merkt sich die Oberfläche (grundlage.js) schon länger: Geräte von vor dem Update haben nur diesen
   const WEITER = "weiter";                                   // Bitte an ein wartendes Dienst-Skript, zu übernehmen (sw.js)
   const UEBERNAHME_MS = 8000;
+  // Ein Folgestart dauert sonst wenige Sekunden. Hängt er (Netz ohne Antwort), stünde die Person ohne Ausweg vor der Starttafel.
+  const START_WAECHTER_MS = 25000;
+  const START_ZU_LANG = "Der Start dauert zu lange. Bitte neu laden.";
+  // Der erste Start lädt rund 9 MB, bei langsamem Mobilfunk auch länger als der Wächter: kein Fehler, nur der Ausweg „Neu laden“.
+  const ERSTER_START_LANG = "Das Laden dauert länger als üblich. Bei sehr langsamer Verbindung weiter warten, sonst neu laden.";
+  let waechter = 0;
   const tafel = document.createElement("div");
   tafel.id = "start";
   tafel.setAttribute("role", "status");
@@ -24,9 +31,13 @@
   const text = t => { tafel.querySelector("#start-text").textContent = t; };
   // Zeigt einen Fehler auf der Starttafel mit einem Knopf (ohne Angabe „Neu laden“, sonst Beschriftung und Aktion); knopf === false lässt ihn weg.
   function halt(meldung, knopf = "Neu laden", aktion = () => location.reload()) {
+    clearTimeout(waechter);                                  // eine genauere Meldung bleibt stehen
     tafel.classList.add("fehler");
     text(meldung);
-    if (knopf === false) return;
+    if (knopf !== false) knopfSetzen(knopf, aktion);
+  }
+  // Setzt den einen Knopf der Starttafel mit Beschriftung und Aktion.
+  function knopfSetzen(knopf, aktion) {
     const b = document.createElement("button");
     b.textContent = knopf;
     b.onclick = aktion;
@@ -58,11 +69,16 @@
   // Anfragen der Oberfläche kommen vom Dienst-Skript: beantworten, sobald der Rechenkern läuft.
   // Hat sich inzwischen in einem anderen Tab eine andere Person angemeldet (oder abgemeldet), nichts mehr beantworten und neu starten:
   // Sonst tauschte der Sync dieses Fensters mit der Sitzung der anderen Person und ihre Dateien landeten im falschen Datenordner.
+  // Solange der Rechenkern noch lädt oder eine andere Anfrage abarbeitet (z. B. einen Sync, er rechnet der Reihe nach), meldet WARTET dem Dienst-Skript,
+  // dass die Anfrage länger warten darf als ein normales Lesen (sw.js WARTEN_GET_MS).
   function anfragenAnnehmen(bereit, person) {
+    let laeuft = false;
+    bereit.then(() => { laeuft = true; }, () => {});
     navigator.serviceWorker.addEventListener("message", async ev => {
       const d = ev.data, zurueck = ev.ports[0];
       if (!d || d.art !== "anfrage" || !zurueck) return;
       try {
+        if (!laeuft || offen.size) zurueck.postMessage(WARTET);
         await bereit;
         if (personFeststellen() !== person) { zurueck.postMessage({ fehler: NICHT_BEREIT }); location.reload(); return; }
         const a = await anKern({ methode: d.methode, pfad: d.pfad, typ: d.typ, cookie: kekse(), koerper: d.koerper }, d.koerper ? [d.koerper] : []);
@@ -96,8 +112,10 @@
   async function dienstAnmelden() {
     const hatte = eigenerDienst();
     if (!hatte) text(ERSTER_START);
-    const neu = !hatte && (await navigator.serviceWorker.register("sw.js")).installing;
-    if (hatte) updateBeobachten(await navigator.serviceWorker.register("sw.js"));
+    // Folgestart: Das eigene Dienst-Skript steuert die Seite schon. register() prüft dabei auf ein Update und hängt bei schlechtem Netz;
+    // deshalb nur anstoßen, nicht darauf warten.
+    if (hatte) { navigator.serviceWorker.register("sw.js").then(updateBeobachten, () => {}); return; }
+    const neu = (await navigator.serviceWorker.register("sw.js")).installing;
     // Scheitert das erste Einrichten (Netz weg, Datei beschädigt), verwirft der Browser das Dienst-Skript, und „ready“ käme nie: melden statt endlos warten.
     await Promise.race([navigator.serviceWorker.ready, new Promise((_, fehler) => neu && neu.addEventListener("statechange", () => neu.state === "redundant" &&
       fehler(new Error("Die App wurde nicht vollständig geladen. Bitte die Verbindung prüfen und neu laden."))))]);
@@ -162,6 +180,12 @@
     // Erster Start: erst das Dienst-Skript einrichten (es prüft jede Datei gegen die Summe aus dem Bau), dann den Rechenkern daraus laden.
     // Sonst käme der Rechenkern ungeprüft und ein zweites Mal aus dem Netz.
     const erst = !eigenerDienst();
+    // Start-Wächter: Beim Folgestart ein Fehler. Beim ersten Start (lädt die ganze App) läuft das Laden weiter, die Tafel bekommt nur den Knopf.
+    waechter = setTimeout(() => {
+      if (!erst) return halt(START_ZU_LANG);
+      text(ERSTER_START + " " + ERSTER_START_LANG);
+      knopfSetzen("Neu laden", () => location.reload());
+    }, START_WAECHTER_MS);
     if (erst) await dienstAnmelden();
     const bereit = kernStarten(person);
     bereit.catch(() => {});
@@ -185,11 +209,13 @@
     speicherFest();
     window.ZEIT_START = { kern_ms: kernMs, gesamt_ms: Math.round(performance.now() - t0) };
     if (selbsttest) {
+      clearTimeout(waechter);
       text("Selbsttest läuft …");
       const r = await anKern({ art: "selbsttest" });
       return text(r.text ? `Selbsttest: ${r.text} (Start ${window.ZEIT_START.gesamt_ms} ms, Version ${VERSION})` : r.fehler);
     }
     await (frueh || oberflaecheLaden());
+    clearTimeout(waechter);
     tafel.remove();
   }
   los().catch(e => { console.error(e); halt("Die App lässt sich gerade nicht starten. Beim ersten Start braucht sie eine Verbindung zum Internet. (" + (e && e.message || e) + ")"); });

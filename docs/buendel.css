@@ -114,7 +114,7 @@ main{padding:14px 16px 96px;max-width:1180px;margin:0 auto}
   border:1px solid var(--rand);border-radius:26px;box-shadow:0 8px 30px rgba(20,24,34,.18);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:4px 6px;z-index:6;max-width:536px;margin:0 auto}
 .nav-haelfte{display:flex;align-items:center}   /* gleich breite Hälften: der Stempelknopf sitzt mittig, auch wenn „Abwesenheit“ breiter ist als „Zeit“ */
 #nav a{flex:1;text-align:center;padding:7px 5px 6px;font-size:11px;color:var(--mut);text-decoration:none;border-radius:20px}
-#nav .fab{flex:none;width:54px;height:54px;border-radius:50%;padding:0;margin:-22px 6px 0;background:var(--acc);border:4px solid var(--bg);color:var(--acc-t);box-shadow:0 6px 16px color-mix(in srgb,var(--acc) 45%,transparent);display:flex;align-items:center;justify-content:center}
+#nav .fab{flex:none;width:48px;height:48px;border-radius:50%;padding:0;margin:0 6px;background:var(--acc);border:0;color:var(--acc-t);box-shadow:0 3px 10px color-mix(in srgb,var(--acc) 40%,transparent);display:flex;align-items:center;justify-content:center}
 #nav .fab svg{width:26px;height:26px;stroke-width:2.4}
 #nav a svg{display:block;margin:0 auto 2px;width:24px;height:24px;padding:0 5px;box-sizing:content-box}   /* Inhalt mindestens 34 px: mit Innenabstand 44 px Tippfläche (min-width:max-content) */
 /* Kurznamen der Tableiste bis 375 px (design.md F-NV1, seit 21.11.2026; vorher unter 360 px: bei 375 px brauchten „Homeoffice“ und „Abwesenheit“ 140 px, die Hälfte hatte 139,6,
@@ -264,7 +264,7 @@ body[data-design=handy] .card{overflow:hidden}
 body[data-design] .card{background:var(--card);border:1px solid var(--rand);border-radius:var(--r);box-shadow:var(--glanz),var(--sh);
   -webkit-backdrop-filter:var(--glas-karte);backdrop-filter:var(--glas-karte);padding:var(--karte-innen);margin:0 0 var(--karte-luecke)}
 body[data-design=handy] .card>h2{padding:14px 16px 4px;margin:0;font-size:15px;letter-spacing:0;text-transform:none;color:var(--tx-2);font-weight:600}
-body[data-design=handy] .card:not(.dash>.kachel)>*:not(h2):not(.zeile):not(table):not(.tbl):not(.tag):not(.kw):not(.balken):not(.kal){margin-left:16px;margin-right:16px}   /* das Monats-Raster nimmt seinen eigenen Rand (Z2); Kacheln der Übersicht haben Innenabstand, dort käme der Rand doppelt */
+body[data-design=handy] .card:not(.dash .kachel)>*:not(h2):not(.zeile):not(table):not(.tbl):not(.tag):not(.kw):not(.balken):not(.kal){margin-left:16px;margin-right:16px}   /* das Monats-Raster nimmt seinen eigenen Rand (Z2); Kacheln der Übersicht haben Innenabstand, dort käme der Rand doppelt */
 body[data-design=handy] .card>.hero{margin-top:16px}
 body[data-design=handy] .card>.schnell,body[data-design=handy] .card>.raster{margin-bottom:16px}
 body[data-design=handy] .card>.hinweis{margin-bottom:14px}
@@ -354,7 +354,6 @@ details.vb summary{cursor:pointer;font-weight:600;color:var(--acc-fg,var(--acc))
 .tag .ist small.saldo{font-weight:600}
 
 body[data-design] :is(.jahr,.prognose){-webkit-backdrop-filter:var(--glas-karte);backdrop-filter:var(--glas-karte)}
-body[data-design] #nav .fab{border-color:var(--bg)}
 body[data-design] #blatt .inh{background:var(--pop);border:1px solid var(--rand);box-shadow:var(--glanz),var(--sh-hoch)}
 body[data-design] header{background:transparent}
 body[data-design] input,body[data-design] select{background:color-mix(in srgb,var(--tx) 6%,transparent);border-color:var(--feld-rand)}
@@ -493,18 +492,9 @@ body[data-design=handy] .card>.reihe{margin-left:16px;margin-right:16px}
 /* ===== Kopfleiste: Wrapper ===== */
 .kopfleiste{display:contents}
 header #zurueck{order:0}header h1{order:1}header .jahr{order:2}header #zu-heute{order:3}header #menue{order:3}
-/* „?“ neben dem Seitentitel (Hilferunde 23.11.2026): Titel und Knopf in einer Zeile; 44 px Tippfläche, sichtbar der 28-px-Chip wie an den Kacheln */
-.titel-zeile{display:flex;align-items:center;gap:6px;min-width:0;flex:1;order:1}
-header .titel-zeile h1{flex:0 1 auto;min-width:0;overflow-wrap:anywhere}
-.titel-hilfe{min-width:44px;min-height:44px;width:44px;height:44px;padding:8px;border:0;background-clip:content-box;margin:0}
-.titel-hilfe[hidden]{display:none}
-.titel-zeile .titel-hilfe{order:2}              /* rechts vom Titel, auch wenn header h1 order:1 hat */
-/* Am Rechner steht die Reiterleiste in derselben Zeile: mit min-width:0 und Bruch überall stand „Zeit“ Buchstabe für Buchstabe untereinander,
-   der Kopf wuchs um 54 px und schob die Tag-Spalte unter den Fensterrand (Designfund 23.11.2026) */
-body[data-design=web] .titel-zeile{min-width:auto}
-body[data-design=web] header .titel-zeile h1{overflow-wrap:normal}
-body[data-design=handy] .titel-zeile{padding:0 16px;margin:0 0 4px}
-body[data-design=handy] header .titel-zeile h1{flex:0 1 auto;padding:0;margin:0}
+/* „?“ zur Seite als rundes Symbol bei den Schnell-Symbolen (Auftrag 23.11.2026): button.rund setzt display, darum schlägt hidden nur mit !important */
+#titel-hilfe{font-weight:700}#titel-hilfe[hidden]{display:none!important}
+.titel-allein{display:contents}   /* eigene Hülle nur für den Titel: er bleibt Teil des Kopfs wie vorher, hat aber keine Nachbarn in seiner Zeile */
 /* ===== Handy: Kopfleiste bleibt sichtbar und wandert mit (sticky); Überschrift scrollt normal weg ===== */
 body[data-design=handy] header{display:contents}
 body[data-design=handy] .kopfleiste{display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:8;padding:calc(8px + env(safe-area-inset-top)) 16px 8px;transition:background .2s,border-color .2s;border-bottom:.5px solid transparent}
@@ -513,7 +503,7 @@ body[data-design=handy] .kopfleiste #zurueck{order:0}
 body[data-design=handy] .kopfleiste .jahr{order:1;margin-left:auto}
 body[data-design=handy] .kopfleiste #menue{order:2}
 body[data-design=handy] .kopfleiste{justify-content:flex-end}body[data-design=handy] .kopfleiste #zurueck{margin-right:auto}   /* „Heute“ und Menü rechts, auch ohne Jahreswahl */
-body[data-design=handy] .kopfleiste #zu-heute,body[data-design=handy] .kopfleiste #farb-knopf,body[data-design=handy] .kopfleiste #sync-symbol{order:2}
+body[data-design=handy] .kopfleiste #titel-hilfe,body[data-design=handy] .kopfleiste #zu-heute,body[data-design=handy] .kopfleiste #farb-knopf,body[data-design=handy] .kopfleiste #sync-symbol{order:2}
 header #sync-symbol,header #farb-knopf{order:3}
 .schnell-leiste{display:none}body[data-design=web] .schnell-leiste{display:flex;gap:var(--a-2);margin:0 6px var(--a-4)}   /* Web-Design: Schnell-Symbole unter dem Logo, mindestens 12 px darüber und darunter (F-SL1) */
 @media (max-width:699px){body[data-design=web] .schnell-leiste{flex-direction:column;align-items:center;margin:0 0 var(--a-3)}}
@@ -526,7 +516,6 @@ header #sync-symbol,header #farb-knopf{order:3}
 @media (prefers-reduced-motion:reduce){#sync-symbol.sync-laeuft svg{animation:none;opacity:.5}}
 /* Symbole in der oberen Leiste wie der Menü-Knopf: rund, dezent hinterlegt */
 button.leiste{border:0;background:color-mix(in srgb,var(--tx) 10%,transparent);color:var(--tx)}button.leiste svg{width:20px;height:20px}
-body[data-design=handy] button.leiste{width:36px;height:36px}
 body[data-design=handy] .kopfleiste #menue{order:3}
 body[data-design=handy] header h1{order:0;flex:none;padding:0 16px;margin:0 0 4px;font-size:34px;font-weight:700;letter-spacing:-.02em}
 body[data-design=handy] .jahr[style*="none"]+#menue{margin-left:auto}
@@ -767,7 +756,7 @@ body[data-design] .schnell>button,body[data-design] .schnell>.btn,body[data-desi
 body[data-ohne~="monat"] [data-modul="monat"],body[data-ohne~="zutun"] [data-modul="zutun"],body[data-ohne~="horest"] [data-modul="horest"],body[data-ohne~="jahr"] [data-modul="jahr"],body[data-ohne~="urlaub"] [data-modul="urlaub"],body[data-ohne~="darstellung"] [data-modul="darstellung"],body[data-ohne~="hilfe"] [data-modul="hilfe"],body[data-ohne~="export"] [data-modul="export"],body[data-ohne~="sicherung"] [data-modul="sicherung"],body[data-ohne~="gleittage"] [data-modul="gleittage"],body[data-ohne~="familientage"] [data-modul="familientage"],body[data-ohne~="angespart"] [data-modul="angespart"],body[data-ohne~="freizeit"] [data-modul="freizeit"],body[data-ohne~="krank"] [data-modul="krank"],body[data-ohne~="planung"] [data-modul="planung"],body[data-ohne~="stempel"] [data-modul="stempel"],body[data-ohne~="gleitzeit"] [data-modul="gleitzeit"],body[data-ohne~="woche"] [data-modul="woche"],body[data-ohne~="nachweis"] [data-modul="nachweis"],body[data-ohne~="ex_pdf"] [data-modul="ex_pdf"],body[data-ohne~="ex_office"] [data-modul="ex_office"],body[data-ohne~="ex_text"] [data-modul="ex_text"],body[data-ohne~="ex_daten"] [data-modul="ex_daten"],body[data-ohne~="ex_kalender"] [data-modul="ex_kalender"],body[data-ohne~="abgleich"] [data-modul="abgleich"],body[data-ohne~="github"] [data-modul="github"],body[data-ohne~="koppeln"] [data-modul="koppeln"],body[data-ohne~="sonderurlaub"] [data-modul="sonderurlaub"],body[data-ohne~="kind_krank"] [data-modul="kind_krank"],body[data-ohne~="monatsnachweis"] [data-modul="monatsnachweis"]{display:none!important}
 body[data-ohne~="ex_pdf"] a.btn[href$=".pdf"],body[data-ohne~="ex_office"] a.btn[href$=".docx"],body[data-ohne~="ex_office"] a.btn[href$=".odt"],body[data-ohne~="ex_office"] a.btn[href$=".ods"],body[data-ohne~="ex_office"] a.btn[href$=".xlsx"],body[data-ohne~="ex_text"] a.btn[href$=".md"],body[data-ohne~="ex_text"] a.btn[href$=".txt"],body[data-ohne~="ex_daten"] a.btn[href$=".json"],body[data-ohne~="ex_daten"] a.btn[href$=".xml"],body[data-ohne~="ex_daten"] a.btn[href$=".csv"],body[data-ohne~="ex_kalender"] a.btn[href$=".ics"]{display:none!important}
 /* Handy, Symbolleiste (Befund der Design-Prüfung vom 17.11.2026): Symbole mit 44 px Tippfläche; die Jahreswahl steht auf Jahresseiten in einer eigenen Zeile, sonst passt die Leiste nicht in 360 bis 390 px */
-body[data-design=handy] button.leiste{width:44px;height:44px}
+button.leiste{width:44px;height:44px}   /* seit 23.11.2026 auch am Rechner: dort steht das „?“ unter dem Logo, 44 px wie am Handy */
 body[data-design=handy] .kopfleiste{flex-wrap:wrap}
 body[data-design=handy] .kopfleiste:has(.jahr:not([style*="none"]))::after{content:"";order:8;flex:0 0 100%;height:0}
 body[data-design=handy] .kopfleiste .jahr{order:9;margin:0 auto}
@@ -885,6 +874,7 @@ body[data-design] .card.leer{display:flex;flex-direction:column;align-items:cent
 .gz-verlauf .grenze-text{font-size:12px;fill:var(--tx-2)}
 .gz-verlauf .achse{font-size:12px;fill:var(--tx-3)}
 body[data-design=handy] .gz-verlauf{width:calc(100% - 32px)}   /* am Handy hat jede Karte innen 16 px Rand (grundlage.css), sonst ragt das Bild hinaus */
+.gz-tabelle td:first-child{white-space:normal}.gz-tabelle .gz-zeit{white-space:nowrap}   /* am Handy bricht die Zeile nach „KW nn ·“ um, der Zeitraum bleibt ganz */
 /* ---- bausteine/reiter.css ---- */
 /* Zeiterfassung. © 2026 David Saluda. Alle Rechte vorbehalten. Erstellt mit Unterstützung von KI (Claude, Anthropic). */
 /* Reiter-Leiste unter dem Titel (#reiter, aufbau.md 3, design.md 3.6): Pillen-Leiste aus Glas, 44 px Tippfläche in beiden Designs.
@@ -960,10 +950,18 @@ body[data-design=handy] .dash .kachel>b{font-size:28px}
 #einrichtung select,#einrichtung input[type=text],#einrichtung input[type=number]{max-width:320px}
 /* Übersicht: erste Kachel kompakter, daneben Gleitzeit-Konto und Urlaub verfügbar */
 .dash .heute-karte{grid-column:1/-1}
-.dash .krank-breit{grid-column:1/-1}                         /* letzte Kachel füllt ihre Reihe (bei zwei Spalten blieb daneben eine Zelle leer) */
+.dash .krank-breit{grid-column:1/-1}
+/* Gleitzeit und Diese Woche hintereinander (uebersichtReihe): am Handy untereinander wie alle Kacheln, am Rechner und ab 768 px nebeneinander;
+   ab 1100 px liegen sie in zwei Spalten des Rasters (subgrid), wie die Karte „Heute“ daneben */
+.dash .kachel-paar{display:contents}
+body[data-design=web] .dash .kachel-paar{display:grid;grid-column:1/-1;grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr));gap:var(--karte-luecke)}
+@media (min-width:768px){.dash .kachel-paar{display:grid;grid-column:1/-1;grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr));gap:var(--karte-luecke)}}
+/* Das Band der laufenden Stempeluhr wiederholt nur die Karte „Heute“ (Wahl vom 23.11.2026): auf der Übersicht weg, sonst überall */
+body[data-seite=start] #stempel-banner{display:none}                         /* letzte Kachel füllt ihre Reihe (bei zwei Spalten blieb daneben eine Zelle leer) */
 @media (min-width:1100px){
   body[data-design=web] .dash .heute-karte{grid-column:span 2}
   body[data-design=web] .dash .krank-breit{grid-column:span 2}
+  body[data-design=web] .dash .kachel-paar{grid-column:span 2;grid-template-columns:subgrid}
 }
 /* Jahreswechsel (Januar): wie „Zu tun“, erledigte Schritte mit Haken und gedämpft */
 .dash .jahreswechsel ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
@@ -978,6 +976,10 @@ body[data-design=handy] .dash .kachel>b{font-size:28px}
 .mini-verlauf .linie{fill:none;stroke:var(--tx-2);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
 .mini-verlauf .punkt.plus{fill:var(--ok)}
 .mini-verlauf .punkt.minus{fill:var(--rot)}
+/* Knopf „Anordnen“ unten auf der Übersicht (Wunsch 23.11.2026): unauffällig als leiser Link, Tippfläche 44 px, führt zu Einstellungen → Aussehen → Übersicht anordnen */
+.dash .anordnen-link{grid-column:1/-1;display:flex;justify-content:center}
+.anordnen-link a{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:var(--rr);color:var(--tx-2);font-size:14px;text-decoration:none}
+.anordnen-link a:hover{color:var(--tx);text-decoration:underline}
 /* ---- seiten/monat.css ---- */
 /* Monatsliste */
 .monat-grid{display:block}
@@ -1038,9 +1040,10 @@ body[data-design=handy] .kw-kopf{white-space:nowrap;line-height:1.2}
 /* Der Zeitraum „16.11. – 22.11.2026“ bricht nicht nach dem Strich um (Web 768 px neben der Seitenleiste) */
 .kw-kopf .kw-zeit{font-weight:400;color:var(--tx);white-space:nowrap}
 /* Wochenziel (Wunsch 22.11.2026): Balken Ist von Soll der Woche; die Zahl steht als Text daneben, die Farbe ist nur Zusatz */
-.wz{position:relative;height:10px;border-radius:999px;background:var(--line);overflow:hidden;margin:8px 0 2px}
-/* Marke „Soll bis heute“: senkrechter Strich in Textfarbe, damit sie auf Grün und Grau sichtbar bleibt */
-.wz-marke{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--tx)}
+/* Ohne overflow:hidden: die Marke bei 0 % und 100 % ragt sonst halb aus dem Balken und war nur halb zu sehen (23.11.2026); der Balken rundet sich selbst */
+.wz{position:relative;height:10px;border-radius:999px;background:var(--line);margin:8px 0 2px}
+/* Marke „Soll bis heute“: senkrechter Strich in Textfarbe, damit sie auf Grün und Grau sichtbar bleibt; etwas höher als der Balken, damit sie an den runden Enden ganz zu sehen ist */
+.wz-marke{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--tx)}
 .wz-heute span{color:var(--tx-2)}
 .wz i{display:block;height:100%;background:var(--ok);border-radius:999px}
 .wz-satz{margin:4px 0 8px;font-weight:600;color:var(--tx)}
@@ -1138,6 +1141,7 @@ body[data-design=web] .jahr-karte .hero:not(:has(.ring)){justify-content:flex-st
 .hinweis.nach-karten{margin-top:-4px;margin-bottom:14px}
 /* Brückentage: Vorschlag als ganze Zeile zum Antippen (mind. 44 px), Text links und umbrechend */
 .zeile.bruecke{width:100%;min-height:44px;text-align:left;justify-content:flex-start;white-space:normal}
+.zeile.bruecke+.zeile.bruecke{margin-top:6px}   /* Vorschläge stießen bündig aneinander (Design-Prüfung, Zustand urlaub/resturlaub-frist) */
 /* ---- seiten/krank.css ---- */
 /* Krankheit */
 .krank-kacheln{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px}
@@ -1349,7 +1353,7 @@ body[data-design=handy] .card>.pausen-stufen{margin-left:16px;margin-right:16px}
    bei 768 px am Rechner „Beamte in Bayern (§“. Gemessen an der Karte in ihrer Schrift (em), so stimmt es auch bei großer Schrift.
    Ebenso Wochenstunden und Homeoffice, sobald „kein Homeoffice“ neben dem Zähler nicht mehr ganz zu lesen ist (Handy bis 390 px) */
 .card:has(#kk-dienst){container:regelkarte/inline-size}
-@container regelkarte (max-width:46em){.reihe.kind-krank{grid-auto-flow:row;grid-template-rows:none;grid-template-columns:minmax(0,1fr)}}
+@container regelkarte (max-width:46em){.reihe.kind-krank,.reihe.zusatzurlaub{grid-auto-flow:row;grid-template-rows:none;grid-template-columns:minmax(0,1fr)}}
 @container regelkarte (max-width:23em){.reihe:has(#r-hm){grid-auto-flow:row;grid-template-rows:none;grid-template-columns:minmax(0,1fr)}}
 .seg[data-n=thema]{flex-wrap:wrap}
 /* Sechs Stile als 6×1 oder 3×2, nie 5+1 (Terminal bei 768 px): Die Grenze misst die Karte in ihrer Schrift (em), so stimmt sie auch bei großer Schrift */

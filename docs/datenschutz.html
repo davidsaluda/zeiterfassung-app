@@ -1,0 +1,98 @@
+<!doctype html>
+<!-- Zeiterfassung. © 2026 David Saluda. Alle Rechte vorbehalten. Erstellt mit Unterstützung von KI (Claude, Anthropic). -->
+<!-- Datenschutzerklärung der Web-App auf GitHub Pages. weitergabe_bauen.py legt sie nur ins App-Repo (docs/), nicht in andere Bauten:
+     Sie nennt GitHub als Hoster. Lädt nichts: kein Skript, keine Schrift, kein Bild; fremde Adressen nur als Link-Ziel. -->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none';">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Datenschutz – Zeiterfassung</title>
+<style>
+/* Farben und Schrift wie die App (app/web/grundlage.css); Links dunkler als der Akzent der App, damit der Kontrast auch hier WCAG AA erreicht */
+:root { --bg: #f2f3f7; --karte: #fff; --tx: #0d0f14; --tx-2: #3c414d; --linie: rgba(17, 19, 24, .10); --link: #0057b8; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #050608; --karte: #15171d; --tx: #f5f5f7; --tx-2: #bcc1ca; --linie: rgba(255, 255, 255, .12); --link: #6cb4ff; }
+}
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--tx);
+  font: 16px/1.55 -apple-system, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+main { box-sizing: border-box; max-width: 44rem; margin: 0 auto; padding: max(24px, env(safe-area-inset-top)) 16px max(40px, env(safe-area-inset-bottom)); }
+h1 { font-size: 28px; line-height: 1.2; margin: 8px 0 4px; }
+h2 { font-size: 19px; line-height: 1.3; margin: 0 0 8px; }
+section { background: var(--karte); border: 1px solid var(--linie); border-radius: 16px; padding: 16px 18px; margin: 16px 0; }
+p, ul { margin: 0 0 8px; }
+p:last-child, ul:last-child { margin-bottom: 0; }
+ul { padding-left: 1.3em; }
+li { margin: 4px 0; }
+a { color: var(--link); text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+a:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 4px; }
+.stand, footer { color: var(--tx-2); font-size: 14px; }
+.zurueck { display: inline-flex; align-items: center; min-height: 44px; }
+footer { text-align: center; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+<a class="zurueck" href="./">Zurück zur App</a>
+<h1>Datenschutz</h1>
+<p class="stand">Stand: 23.11.2026</p>
+
+<section>
+<h2>Wer ist verantwortlich?</h2>
+<p>David Saluda.</p>
+<p>Kontakt nur über GitHub: <a href="https://github.com/davidsaluda/zeiterfassung-app/issues">Issues des Repos davidsaluda/zeiterfassung-app</a>. Issues sind öffentlich. Schreib dort bitte keine Zeiten und keine persönlichen Angaben hinein.</p>
+</section>
+
+<section>
+<h2>Wer stellt die Seite bereit?</h2>
+<p>Die Seite liegt bei GitHub Pages (GitHub, Inc.). Bei jedem Aufruf verarbeitet GitHub technische Daten in seinen Server-Logs, zum Beispiel:</p>
+<ul>
+<li>IP-Adresse,</li>
+<li>Zeitpunkt und aufgerufene Datei,</li>
+<li>Angaben des Browsers (Name, Version, Betriebssystem).</li>
+</ul>
+<p>Das braucht GitHub, um die Seite sicher auszuliefern. Rechtsgrundlage ist das berechtigte Interesse an einer sicheren und stabilen Bereitstellung der Seite (Art. 6 Abs. 1 lit. f DSGVO). Ich bekomme diese Logs nicht zu sehen. Wie lange GitHub die Logs speichert, legt GitHub fest.</p>
+<p>GitHub sitzt in den USA. Die Übermittlung dorthin stützt sich auf das EU-US Data Privacy Framework bzw. auf Standardvertragsklauseln. Einzelheiten nennt GitHub. Mehr dazu: <a href="https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement">Datenschutzerklärung von GitHub</a>.</p>
+</section>
+
+<section>
+<h2>Was die Seite nicht tut</h2>
+<ul>
+<li>Kein Tracking, keine Analyse, keine Werbung.</li>
+<li>Keine Cookies zum Wiedererkennen. Die App merkt sich nur zwei Einstellungen als Cookie (Akzentfarbe, Demo an oder aus). Sie enthalten keine Zeiten und keinen Namen. Der Browser schickt sie bei jedem Abruf unter /zeiterfassung-app/ an GitHub mit. Sie und der Speicher im Browser sind technisch nötig für die App, die du selbst nutzen willst. Deshalb braucht es keine Einwilligung (§ 25 Abs. 2 Nr. 2 TDDDG).</li>
+<li>Keine Schriften, Skripte oder Bilder von fremden Adressen. Alles kommt von dieser Adresse.</li>
+</ul>
+</section>
+
+<section>
+<h2>Wo bleiben meine Zeiten?</h2>
+<p>Alles, was du in die App eingibst, bleibt im Speicher des Browsers auf deinem Gerät. Die App rechnet dort selbst. Ich erhalte deine Daten nie.</p>
+<p>Daten verlassen das Gerät nur, wenn du es selbst einschaltest:</p>
+<ul>
+<li><b>Synchronisierung über dein eigenes GitHub-Repo:</b> Die App spricht dann mit api.github.com und deinem Repo. Dorthin gehen nur verschlüsselte Sync-Dateien. Das Token bleibt auf deinem Gerät.</li>
+<li><b>Sicherung als Datei:</b> Die App erstellt eine Datei auf deinem Gerät. Wohin du sie legst, entscheidest du.</li>
+</ul>
+<p>Links zum Wiki und zu den Releases öffnen GitHub erst, wenn du sie antippst.</p>
+</section>
+
+<section>
+<h2>Prüft die App auf neue Versionen?</h2>
+<p>Ja, aber nur bei ihrer eigenen Adresse, also bei dieser Seite. Beim Öffnen, beim Zurückkehren in die App und alle 15 Minuten lädt der Browser das kleine Dienst-Skript der App neu und vergleicht es. Die App fragt dafür nicht bei der GitHub-API und sendet keine Daten von dir mit.</p>
+</section>
+
+<section>
+<h2>Welche Rechte habe ich?</h2>
+<p>Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch. Du kannst dich auch bei einer Datenschutz-Aufsichtsbehörde beschweren.</p>
+<ul>
+<li><b>Server-Logs:</b> Die hat nur GitHub. Wende dich dafür an GitHub (siehe oben).</li>
+<li><b>Daten der App:</b> Die löschst du selbst: in der App unter <b>Einstellungen → Module und Profile → Alles zurücksetzen</b>, oder ganz, indem du im Browser die Website-Daten dieser Seite löschst.</li>
+</ul>
+</section>
+
+<footer>© 2026 David Saluda</footer>
+</main>
+</body>
+</html>
