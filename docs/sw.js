@@ -4,17 +4,17 @@
 // 1. Alle Programmdateien im Gerät behalten, damit die App ohne Internet startet. Geladen wird nur von der eigenen Adresse.
 // 2. Anfragen der Oberfläche („api/…“) nicht ins Netz schicken, sondern an die Seite geben; dort rechnet Python im Gerät (start.js, kern.js).
 // VERSION und DATEIEN setzt web_bauen.py ein (Datei -> Kurzform ihrer SHA-256-Summe).
-const VERSION = "20261123.2344";
+const VERSION = "20261125.0025";
 const DATEIEN = {
- "app.zip": "141382483f068626",
- "buendel.css": "46c6b182f61ff94c",
- "buendel.js": "b09153004bb4f549",
+ "app.zip": "bfc6afaa640dd2c2",
+ "buendel.css": "49cc9218405128bc",
+ "buendel.js": "e8a3d106e4688667",
  "icon-180.png": "fde9a08b04e87a26",
  "icon-192.png": "96cb413dec9a6aa3",
  "icon-512.png": "bcdaded6225901de",
  "icon-maskable-512.png": "2f537b32a49ba198",
  "icon.svg": "87e078fd4cfa21bb",
- "index.html": "0ade69d5ec1af033",
+ "index.html": "9d564d3765e02558",
  "kern.js": "841ae2452be83722",
  "lizenzen/Apache-2.0.txt": "7d5450cb2d142651",
  "lizenzen/Chaquopy-LICENSE.txt": "345a9fdfeed355d3",
