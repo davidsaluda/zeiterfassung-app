@@ -13,7 +13,7 @@ Kleine, private Zeiterfassung für Büro und Homeoffice. Ohne Benutzerkonto, ohn
 - Homeoffice-Quote mit einstellbarer Grenze, oder ohne Grenze, ohne Homeoffice oder nur Homeoffice
 - Module: Was du nicht brauchst, schaltest du unter „Einstellungen → Module“ ab (jede Seite des Menüs außer „Übersicht“ und „Einstellungen“, dazu zum Beispiel Gleittage, Familientage, Stempeluhr, einzelne Export-Formate). Es erscheint dann nirgends mehr
 - Teilzeit, Elternzeit, Altersteilzeit und andere Arbeitszeiten als Abschnitte
-- Homeoffice-Übersicht und Export als PDF, Word, ODT, ODS, Excel, Markdown, Text, JSON, XML, CSV, dazu Kalender (.ics) zum direkten Übernehmen
+- Homeoffice-Übersicht und Export als PDF, Excel und CSV, dazu Kalender (.ics); Word beim Monatsnachweis
 - Feiertage aller 16 Bundesländer
 - Synchronisierung zwischen mehreren eigenen Geräten, verschlüsselt (wenn gewünscht)
 

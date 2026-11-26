@@ -55,12 +55,12 @@ async function api(methode, pfad, body) {
 const COOKIE_SICHER = location.protocol === "https:" ? "; Secure" : "";
 const NAMEN = {start: "Übersicht", tag: "Tag", monat: "Monat", woche: "Woche", horest: "HO-Spielraum", jahr: "Jahresübersicht", urlaub: "Urlaub & Gleittage", krank: "Krankmeldungen", steuer: "Homeoffice-Übersicht", export: "Export & Auswertung", sicherung: "Sicherung", sync: "Synchronisieren", einstellungen: "Einstellungen", hilfe: "Hilfe"};
 const HANDY_NAV = ["start", "zeit", "+", "homeoffice", "abwesenheit"];   // Bereiche der Tableiste (Entscheidung 19.11.2026); die übrigen stehen hinter „Menü“
-// ---- Export-Blatt: Monat, Homeoffice-Übersicht, Kalender und alle Tage in mehreren Formaten
+// ---- Export-Blatt: Monat, Homeoffice-Übersicht, Kalender und alle Tage (PDF, Excel, CSV, Kalender; Word beim Monatsnachweis)
 // Teilen: Auf iPhone, iPad, Android und in aktuellen Desktop-Browsern öffnet die Web-Share-API das Teilen-Menü des Geräts.
 // Ist "Teilen" an (oder gibt es keinen Download), wird die Datei geladen und geteilt statt gespeichert; sonst normaler Download.
-const TEILEN_MIME = {pdf: "application/pdf", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", odt: "application/vnd.oasis.opendocument.text",
-  ods: "application/vnd.oasis.opendocument.spreadsheet", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", csv: "text/csv", json: "application/json",
-  xml: "application/xml", md: "text/markdown", txt: "text/plain", ics: "text/calendar", db: "application/octet-stream", zsich: "application/octet-stream"};
+const TEILEN_MIME = {pdf: "application/pdf", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", csv: "text/csv", json: "application/json", ics: "text/calendar", db: "application/octet-stream",
+  zsich: "application/octet-stream"};
 // „In Kalender übernehmen“: dieselbe .ics zum Anzeigen. Der Link läuft am Teilen-Menü vorbei (endet nicht auf .ics), das Gerät bietet sie seinem Kalender an.
 const ANSEHEN = "?ansehen=1";
 // Prüft, ob der Browser Dateien über das Teilen-Menü des Geräts weitergeben kann (Web-Share).
@@ -352,7 +352,7 @@ function abmeldenKnopf(roh) {
   $("#seitennav").insertAdjacentHTML("beforeend", `<button type="button" id="nav-abmelden" ${kl("personAbmelden")}>${sym("abmelden")}${text}</button>`);
   schnellSymbole();
 }
-// Rückfrage vor Abmelden und Beenden: gilt je Gerät wie der Stil; „aus“ nach „Nicht mehr fragen“ oder dem Schalter unter Aussehen.
+// Rückfrage vor Abmelden und Beenden: gilt je Gerät wie die Akzentfarbe; „aus“ nach „Nicht mehr fragen“ oder dem Schalter unter Aussehen.
 const ABMELDE_FRAGE = "ho_abmeldefrage", ABMELDE_FRAGE_AUS = "aus", ABMELDE_FRAGE_AN = "an";
 const NICHT_MEHR_FRAGEN = "Nicht mehr fragen";
 // Fragt vor dem Abmelden oder Beenden nach, solange dieses Gerät es nicht abgeschaltet hat. Rückgabe: true heißt weitermachen.
@@ -574,6 +574,30 @@ const orteText = (ho, dst) => einOrt() ? `Arbeitszeit ${(einOrt() === "ho" ? ho 
 const ortVersteckt = (ort, wert) => einOrt() && einOrt() !== ort && !wert ? ' data-stil="display:none"' : "";   // ein alter Wert am anderen Ort bleibt sichtbar
 // Unsichtbare Ortswahl für den Fall, dass es nur einen Arbeitsort gibt.
 const festerOrt = id => `<div class="seg" id="${id}" data-stil="display:none"><button type="button" data-v="${einOrt()}" class="on"></button></div>`;
+// ---- Gemeinsame Bausteine (Release 25.11.2026: je Muster eine Quelle). Texte kommen fertig maskiert, die Bausteine maskieren nicht noch einmal.
+// Segment-Umschalter: wahl [[Wert, Text]], akt der gewählte Wert. o: id, klasse (zu „seg“), name (data-n), label (aria-label) oder beschriftet (aria-labelledby),
+// klick (Name aus AKTIONEN, bekommt den Wert), knopfId (Vorsilbe der Knopf-Ids). Ohne klick trägt jeder Knopf data-v; aria-pressed hält danach GEWAEHLT aktuell.
+const segHtml = (wahl, akt, o = {}) => `<div class="seg${o.klasse ? " " + o.klasse : ""}"${o.id ? ` id="${o.id}"` : ""}${o.name ? ` data-n="${o.name}"` : ""} role="group"${o.label ? ` aria-label="${o.label}"` : ""}${o.beschriftet ? ` aria-labelledby="${o.beschriftet}"` : ""}>${wahl.map(([k, t]) => `<button type="button"${o.knopfId ? ` id="${o.knopfId}${k}"` : ""} class="${k === akt ? "on" : ""}" aria-pressed="${k === akt}" ${o.klick ? kl(o.klick, k) : `data-v="${k}"`}>${t}</button>`).join("")}</div>`;
+// Wert-Zeile „Name … Wert“ (Karten Woche, Tag, Urlaub, Sondertage); klasse färbt den Wert (z. B. „saldo plus“), zeile ist die Klasse der Zeile, id die Kennung der Zeile.
+const wertZeile = (name, wert, klasse = "", zeile = "zeile gr", id = "") => `<div class="${zeile}"${id ? ` id="${id}"` : ""}><span>${name}</span><b${klasse ? ` class="${klasse}"` : ""}>${wert}</b></div>`;
+// Karte eines Kontos (Woche, Einstellungen „Person“): Titel nach Modul (gleitzeit, freizeit), das Modul blendet die Karte mit aus; inhalt fertiges HTML.
+const KONTO_TITEL = {gleitzeit: "Gleitzeit-Konto", freizeit: "Freizeitkonto"};
+const kontoKarte = (modul, inhalt) => `<div class="card"${md(modul)}><h2>${KONTO_TITEL[modul]}</h2>${inhalt}</div>`;
+// Leer-Zustand einer Liste oder Karte („Keine.“, „Noch nichts geplant.“); tag p, wo er in einem Absatz-Fluss steht.
+const leerHtml = (text, tag = "div") => `<${tag} class="leer">${text}</${tag}>`;
+// Auswahl mit Etikett und „Heute“ (Export, Monatsnachweis): werte [[Wert, Text]], wechsel der Name aus WECHSEL, heute das kl(…) des Knopfs, was der Satz für den Screenreader, mehr weitere Attribute des Felds.
+const auswahlHeute = (id, etikett, werte, gewaehlt, wechsel, heute, was, mehr = "") => `<label for="${id}">${esc(etikett)}</label><div class="feld-heute"><select id="${id}" data-wechsel="${wechsel}"${mehr}>${werte.map(([w, t]) => `<option value="${w}"${w === gewaehlt ? " selected" : ""}>${esc(t)}</option>`).join("")}</select><button type="button" class="heute-knopf" ${heute}>Heute<span class="sr">: ${esc(was)}</span></button></div>`;
+// Quote-Kopf (Monat, Jahr, Kacheln „Quote Monat“ und „Quote Jahr“): Ring links, rechts Titel, Werte und ein Zusatz (Marke); ohne Ring (ein Ort, Jahr ohne Prognose) nur der Text.
+// Passt der Text nicht daneben (schmale Kachel, große Schrift), rückt er unter den Ring (.hero bricht um).
+const quoteKopfHtml = (q, quote, rot, titel, werte, zusatz = "", mitRing = true) => `<div class="hero">${mitRing ? ring(q, quote, rot) : ""}<div class="txt">${titel}${werte}${zusatz}</div></div>`;
+// Aktionen des Kopfs ‹ Titel ›: Tag, Woche und Monat teilen ein Datum (zeitnavi.js), der Spielraum blättert nur Monate (jahr, monat).
+const KOPF_ZEIT = {blaettern: r => kl("zeitBlaettern", r), heute: "zeitHeute", datum: "zeitKalenderDatum"};
+const KOPF_SPIELRAUM = {blaettern: r => kl("monatBlaettern", r, false), heute: "zuHeute", datum: "monatDatum"};
+// Namen der Knöpfe je Einheit (zurück, vor, Kalender) und die Klasse der Überschrift.
+const KOPF_NAMEN = {tag: ["Vorheriger Tag", "Nächster Tag", "Tag", ""], woche: ["Vorherige Woche", "Nächste Woche", "Woche", "kw-kopf"], monat: ["Vorheriger Monat", "Nächster Monat", "Monat", ""]};
+// Kopf ‹ Titel › mit Kalender und „Heute“ (Tag, Woche, Monat, Spielraum): titel fertiges HTML, kalId Id des Datumsfelds, wert sein Datum (ISO), a die Aktionen.
+const kopfHtml = (einheit, titel, kalId, wert, a = KOPF_ZEIT) => { const [zurueck, vor, kal, klasse] = KOPF_NAMEN[einheit]; return `<div class="kopf"><button ${a.blaettern(-1)} aria-label="${zurueck}">‹</button><h2${klasse ? ` class="${klasse}"` : ""}>${titel}</h2>
+    <div class="kopf-rechts"><span class="kal-wahl"><button type="button" ${kl("zeitKalender", "#" + kalId)} aria-label="${kal} im Kalender wählen">${sym("monat")}</button><input id="${kalId}" type="date" value="${wert}" ${ZEIT_KAL_GRENZEN} data-wechsel="${a.datum}" tabindex="-1" aria-hidden="true"></span><button class="heute-knopf" ${kl(a.heute)}>Heute</button><button ${a.blaettern(1)} aria-label="${vor}">›</button></div></div>`; };
 // Ist eine Seite abgeschaltet (Modus, Modul oder in dieser Fassung ohne Sync)?
 const URLAUB_KURZ = "Urlaub";                                          // Name der Urlaub-Seite, wenn das Modul „Gleittage“ aus ist
 // Name einer Seite für Titel und Menü: ohne Gleittage heißt „Urlaub & Gleittage“ nur „Urlaub“.
@@ -645,8 +669,6 @@ function monatBlaettern(richtung, mitAdresse) { monatWechsel(richtung); if (mitA
 // Kalender des Geräts öffnen. Am Rechner über showPicker(); am Tippgerät (iPhone: weder showPicker() noch click() öffnen dort etwas)
 // liegt das unsichtbare Datumsfeld selbst über dem Knopf und nimmt das Tippen an (grundlage.css, .kal-wahl).
 function kalenderOeffnen(feld) { const k = $(feld); try { k.showPicker(); } catch (e) { k.focus(); k.click(); } }
-// Öffnet den Kalender für den Monat.
-function monatKalender() { kalenderOeffnen("#m-kal"); }
 function monatDatum(iso) {                       // beliebigen Tag im Kalender gewählt: zu seinem Monat springen
   if (!iso) return;
   jahr = +iso.slice(0, 4); monat = +iso.slice(5, 7);
@@ -735,9 +757,28 @@ const pauseNorm = t => /^\s*\d{1,3}\s*$/.test(t || "") ? hhmm(+t) : zeitNorm(t);
 // Kurztext „Kommen–Gehen · Pause …“ eines Tages (leer ohne Kommen). Mit mehreren Einträgen (GET /woche, /monat; Wunsch vom 23.11.2026) zählt nur ihre eigene
 // Pause, denn die gespeicherte enthält die Lücke dazwischen; einzeln (Seite Tag, die Einträge stehen darunter mit Pause): „· 2 Einträge“ statt der Pause,
 // auch an einem Tag ohne Uhrzeit (Lücke als Pause zu lang, etwa über Mitternacht).
-const uhrText = (z, einzeln) => einzeln && z.eintraege?.length ? (z.kommen ? `${z.kommen}–${z.gehen} · ` : "") + `${z.eintraege.length} Einträge` : !z.kommen ? "" : `${z.kommen}–${z.gehen} · Pause ${z.eintraege?.length ? z.eintraege_pause || hhmm(0) : z.pause}`;
+const uhrText = (z, einzeln) => einzeln && z.eintraege?.length ? (z.kommen ? `${z.kommen}–${z.gehen} · ` : "") + `${z.eintraege.length} ${z.eintraege.length === 1 ? "Eintrag" : "Einträge"}` : !z.kommen ? "" : `${z.kommen}–${z.gehen} · Pause ${z.eintraege?.length ? z.eintraege_pause || hhmm(0) : z.pause}`;
 // Pausenregel aus „Regeln“ (wie regeln.pause_auto): je Stufe anteilig, damit die Arbeitszeit nie unter die Schwelle fällt
 const pauseAuto = dauer => (KONFIG.pausen || []).reduce(([p, vorher], [ab, pause]) => [dauer > ab ? Math.max(p, Math.min(pause, dauer - ab + vorher)) : p, pause], [0, 0])[0];
+// Kappzeit (Auftrag vom 25.11.2026): gilt ab diesem Tag, wie regeln.KAPPZEIT_AB (tests/test_kappzeit.py hält beide gleich)
+const KAPPZEIT_AB = "2026-11-26";
+// [Regelarbeitszeit [Beginn, Ende] oder null, Tagesgrenze in Minuten oder null] am Tag datum (ISO), wie regeln.kappzeit_regeln mit den heutigen Regeln.
+const kappRegeln = datum => !datum || datum < KAPPZEIT_AB ? [null, null] : [KONFIG.regelzeit_an === false ? null : KONFIG.regelzeit || [360, 1200], KONFIG.tagesgrenze_an === false ? null : KONFIG.tagesgrenze_min || 600];
+// Tagesrechnung wie regeln.tag_rechnen für die Vorschau: Blöcke b [{k, g, p (Pause von Hand)}] zeitlich sortiert, ohneMin = Stunden ohne Uhrzeit.
+// Setzt je Block m (Minuten netto): Kappzeit außerhalb der Regelarbeitszeit, Pflichtpause (Lücken und Pausen von Hand zählen an, nur innerhalb) und Kappzeit über
+// der Tagesgrenze ohne Freigabe, beides vom letzten Block rückwärts. Rückgabe: {kapp (Minuten), pause (Pausen von Hand plus Pflichtpause)}.
+function tagRechnen(b, ohneMin, datum, freigabe) {
+  const [rz, grenze] = kappRegeln(datum), [von, bis] = rz || [0, 2880], summe = f => b.reduce((s, x) => s + f(x), 0);
+  const innen = x => Math.max(0, Math.min(x.g, bis) - Math.max(x.k, von));
+  const abziehen = n => [...b].reverse().forEach(x => { const weg = Math.min(n, x.m); x.m -= weg; n -= weg; });
+  b.forEach(x => { x.m = Math.max(0, innen(x) - x.p); });
+  if (!b.length) return {kapp: 0, pause: 0};
+  const gesamt = Math.max(0, Math.min(Math.max(...b.map(x => x.g)), bis) - Math.max(b[0].k, von)), vorPause = summe(x => x.m);
+  abziehen(Math.max(0, pauseAuto(gesamt) - Math.max(0, gesamt - summe(innen)) - summe(x => Math.min(x.p, innen(x)))));   // Überlappung ist keine negative Lücke (wie regeln._pflichtpause)
+  const pause = summe(x => x.p) + vorPause - summe(x => x.m), vorGrenze = summe(x => x.m);
+  if (grenze && !freigabe) abziehen(Math.max(0, vorGrenze + ohneMin - grenze));
+  return {kapp: summe(x => x.g - x.k - innen(x)) + vorGrenze - summe(x => x.m), pause};
+}
 // Die Pausenregel als Satz, zum Beispiel „über 06:00 Std. 00:30 Pause“.
 const pausenText = (stufen = KONFIG.pausen || []) => stufen.length ? stufen.map(([ab, p]) => `über ${zeitText(ab)} Std. ${zeitText(p)} Pause`).join(", ") : "keine Pause";
 // ISO-Datum JJJJ-MM-TT als TT.MM.JJJJ.
@@ -780,6 +821,7 @@ const SYM = {
   hilfe: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.1 1-1.1 1.8M12 17h.01"/>',
   mehr: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
   abmelden: '<path d="M14 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 8l-4 4 4 4M6 12h9"/>',
+  suche: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 20.5 20.5"/>',
 };
 // SVG-Symbol aus SYM als HTML (für Screenreader verborgen).
 const sym = n => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${SYM[n]}</svg>`;
@@ -790,29 +832,25 @@ function menueBlatt() {
   document.querySelectorAll("#blatt-inh [data-zu]").forEach(a => a.addEventListener("click", blattZu));
 }
 // ---- Darstellung: Design (Web/Handy), Farbe (Hell/Dunkel), Akzent
-const AKZENTE = {blau: "#007aff", cyan: "#32ade6", tuerkis: "#00b3a4", gruen: "#30a14e", lindgruen: "#8bc34a", gelb: "#ffcc00", gold: "#d4a017", orange: "#ff9500",
-  rot: "#ff3b30", rosa: "#ff2d55", violett: "#af52de", indigo: "#5e5ce6", braun: "#a2845e", graphit: "#8e8e93"};        // Blau ist immer Standard
-// Eigene Akzentfarbe: gespeichert wird der Name aus AKZENTE oder ein Hex-Wert (#rrggbb)
+// Die 6 Akzentfarben (seit 25.11.2026; keine eigene Farbe mehr). Gespeichert wird der Name; Profile tragen den Hex-Wert einer dieser Farben.
+const AKZENTE = {blau: "#007aff", gruen: "#30a14e", orange: "#ff9500", rot: "#ff3b30", violett: "#af52de", graphit: "#8e8e93"}, AKZENT_VORGABE = "blau";
+const AKZENT_NAMEN = {blau: "Blau", gruen: "Grün", orange: "Orange", rot: "Rot", violett: "Violett", graphit: "Graphit"};   // sichtbarer Name je Farbe
 // Farbmodus ohne gespeicherte Wahl: dunkel (Wunsch vom 22.11.2026, design.md F-MO1; index.html startet mit data-theme=dark dazu passend); Grundfarbe für die Statusleiste je Modus (F-F5, wie --bg in grundlage.css)
 const FARBE_VORGABE = "dunkel", GRUND_DUNKEL = "#050608", GRUND_HELL = "#f2f3f7";
 // Bezug der Akzent-Helfer je Modus (design.md 4.1, Entscheidung Z1): Grundton (dunkel hellster, hell dunkelster Punkt des Verlaufs), Bezugs-Anteil von Weiß
 // bzw. Schwarz für den Schimmer (schimmerAnteil), Deckkraft des Glases, --tx-2. Muss zu grundlage.css passen (--bg-oben bzw. --bg-unten, --card, --tx-2).
 const AKZENT_BEZUG = {dunkel: ["#0b0d14", 0.12, 0.06, "#bcc1ca"], hell: ["#e8eaf0", 0.08, 0.66, "#3c414d"]};
 const SCHIMMER_MAX = 25;   // Prozent Akzent im Glas-Verlauf höchstens; mehr färbt die Seite statt sie zu tönen
-// Dasselbe für die deckenden Stile (themen/<name>.css), Werte wie dort: ohne Glas (Deckkraft 0); Grundton hell die dunkelste, dunkel die hellste Fläche
-// (Grund, Karte oder --pop), Schimmer = stärkste Tönung dieser Fläche mit dem Akzent (Flächig: Karte mit --frei, 20 % hell bzw. 18 % dunkel, aufgerundet). Die 14 % von --acc-bg kommen in akzentFlaeche dazu.
-const STIL_BEZUG = {glas: AKZENT_BEZUG,
-  flaechig: {dunkel: ["#1d1f24", 0.18, 0, "#bcc1ca"], hell: ["#fcfcff", 0.2, 0, "#3c414d"]},
-  kompakt: {dunkel: ["#313134", 0, 0, "#bcc1ca"], hell: ["#f4f4f5", 0, 0, "#3c414d"]},
-  klar: {dunkel: ["#181818", 0, 0, "#bcc1ca"], hell: ["#ffffff", 0, 0, "#3c414d"]},
-  kraeftig: {dunkel: ["#2a2620", 0, 0, "#bcc1ca"], hell: ["#fff1d6", 0, 0, "#3c414d"]},
-  terminal: {dunkel: ["#141a14", 0, 0, "#a3d6a3"], hell: ["#f6f4ec", 0, 0, "#3c414d"]}};   // Terminal dunkel mit eigener grüner --tx-2
-// Seitengrund je Stil [hell, dunkel] wie --bg in grundlage.css bzw. themen/<name>.css: Statusleiste (theme-color) und Bezug der Bedienfarbe im Dunkeln.
-const STIL_GRUND = {glas: [GRUND_HELL, GRUND_DUNKEL], flaechig: ["#f6f7fc", "#121318"], kompakt: ["#f4f4f5", "#1c1c1e"], klar: ["#ffffff", "#101010"], kraeftig: ["#fff1d6", "#1d1a14"], terminal: ["#f6f4ec", "#0a0d0a"]};
 const AKZENT_TOENUNG = 0.14, AKZENT_ZIEL = 4.6, BEDIEN_ZIEL = 3.1;   // stärkste Tönung (--acc-bg); Ziele mit Zuschlag über WCAG 4,5 (Text) und 3 (Bedienelement)
-const hexOk = h => /^#[0-9a-f]{6}$/i.test(String(h));
-// Akzentfarbe als #rrggbb: ein Name aus AKZENTE oder ein Hex-Wert, sonst Blau.
-const akzentFarbe = a => AKZENTE[a] || (hexOk(a) ? String(a).toLowerCase() : AKZENTE.blau);
+// Name der gespeicherten Akzentfarbe: ein Name aus AKZENTE bleibt, der Hex-Wert einer dieser Farben wird ihr Name. Alles andere (eine bis 25.11.2026
+// wählbare Farbe, ein eigener Hex-Wert aus Sicherung, Synchronisierung oder Profil) wird still Blau (hasOwn: Namen wie „toString“ zählen nicht).
+function akzentName(a) {
+  if (Object.hasOwn(AKZENTE, a)) return a;
+  const hex = String(a).toLowerCase();
+  return Object.keys(AKZENTE).find(k => AKZENTE[k] === hex) || AKZENT_VORGABE;
+}
+// Akzentfarbe als #rrggbb zum gespeicherten Wert (akzentName).
+const akzentFarbe = a => AKZENTE[akzentName(a)];
 // Relative Helligkeit einer #rrggbb-Farbe nach WCAG (0 = schwarz, 1 = weiß).
 function leuchtdichte(c) {
   const [r, g, b] = [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
@@ -826,10 +864,10 @@ const farbMix = (c, mit, t) => "#" + [1, 3, 5].map(i => Math.round(parseInt(c.sl
 function lesbar(c, gegen, zu, ziel = 4.5) { let r = c; for (let t = 0.03; kontrast(r, gegen) < ziel && t <= 1; t += 0.03) r = farbMix(c, zu, t); return r; }
 // Fläche für Knöpfe mit Schrift: die Akzentfarbe, so weit abgedunkelt (oder aufgehellt), dass die Schrift darauf lesbar ist
 function knopfFarbe(c) { const weiss = schriftAufFarbe(c) === "#fff"; return lesbar(c, weiss ? "#ffffff" : "#111318", weiss ? "#000000" : "#ffffff"); }
-const farbHell = c => leuchtdichte(c) > 0.75;                    // sehr helle Farben (z. B. Weiß) brauchen einen Rand, sonst verschwinden Symbol und Knöpfe
+const farbHell = c => leuchtdichte(c) > 0.75;                    // sehr helle Farben brauchen einen Rand, sonst verschwinden Symbol und Knöpfe
 // Anteil des Akzents am Glas-Verlauf in Prozent (--schimmer): so viel, dass der Grund nicht heller (dunkel) bzw. dunkler (hell) wird als mit dem
 // Bezugs-Anteil Weiß bzw. Schwarz aus AKZENT_BEZUG, höchstens SCHIMMER_MAX. Kontrast hängt nur an der Leuchtdichte: Was Weiß bzw. Schwarz erfüllt, gilt so für jede Farbe,
-// und Blau oder Indigo dürfen kräftiger tönen als Gelb.
+// und Blau darf kräftiger tönen als Orange.
 function schimmerAnteil(c, dunkel) {
   const [grund, bezug] = AKZENT_BEZUG[dunkel ? "dunkel" : "hell"], grenze = leuchtdichte(farbMix(grund, dunkel ? "#ffffff" : "#000000", bezug));
   const passt = p => { const L = leuchtdichte(farbMix(grund, c, p / 100)); return dunkel ? L <= grenze : L >= grenze; };
@@ -838,23 +876,23 @@ function schimmerAnteil(c, dunkel) {
   return p;
 }
 // Ungünstigste Fläche unter Akzent c: Glas über dem Grund mit Schimmer, darauf --tx-2 mit 14 %, mit und ohne 14 % Akzent; dunkel die hellere, hell die dunklere.
-// Je Farbe gerechnet, damit auch jede eigene Farbe ihr Ziel erreicht (Z1); thema wählt den Bezug des Stils (STIL_BEZUG).
-function akzentFlaeche(c, dunkel, thema = themaAktiv()) {
-  const [grund, fest, glas, text2] = STIL_BEZUG[thema][dunkel ? "dunkel" : "hell"], schimmer = thema === THEMA_VORGABE ? schimmerAnteil(c, dunkel) / 100 : fest;
-  const neutral = farbMix(farbMix(farbMix(grund, c, schimmer), "#ffffff", glas), text2, AKZENT_TOENUNG), getoent = farbMix(neutral, c, AKZENT_TOENUNG);
+// Je Farbe gerechnet, damit jede Akzentfarbe ihr Ziel erreicht (Z1).
+function akzentFlaeche(c, dunkel) {
+  const [grund, , glas, text2] = AKZENT_BEZUG[dunkel ? "dunkel" : "hell"];
+  const neutral = farbMix(farbMix(farbMix(grund, c, schimmerAnteil(c, dunkel) / 100), "#ffffff", glas), text2, AKZENT_TOENUNG), getoent = farbMix(neutral, c, AKZENT_TOENUNG);
   return (leuchtdichte(getoent) > leuchtdichte(neutral)) === dunkel ? getoent : neutral;
 }
 // Akzent als Schrift (--acc-fg, F-AK1): 4,6:1 gegen die ungünstigste Fläche; sehr helle Farben hell und sehr dunkle dunkel bekommen feste Ersatzfarben.
-function akzentSchrift(c, dunkel = istDunkel(), thema = themaAktiv()) {
+function akzentSchrift(c, dunkel = istDunkel()) {
   const L = leuchtdichte(c);
   if (!dunkel && L > 0.55) return "#2c2c2e";
   if (dunkel && L < 0.06) return "#e5e5ea";
-  return lesbar(c, akzentFlaeche(c, dunkel, thema), dunkel ? "#ffffff" : "#000000", AKZENT_ZIEL);
+  return lesbar(c, akzentFlaeche(c, dunkel), dunkel ? "#ffffff" : "#000000", AKZENT_ZIEL);
 }
-// Akzent als Bedienelement (--acc-ui, F-AK2): Fokusring, Rand, Schalter; 3:1 gegen die ungünstigste Fläche und gegen den Grund des Stils (dunkel) bzw. Weiß (hell).
-function akzentBedien(c, dunkel = istDunkel(), thema = themaAktiv()) {
+// Akzent als Bedienelement (--acc-ui, F-AK2): Fokusring, Rand, Schalter; 3:1 gegen die ungünstigste Fläche und gegen den Seitengrund (dunkel) bzw. Weiß (hell).
+function akzentBedien(c, dunkel = istDunkel()) {
   const zu = dunkel ? "#ffffff" : "#000000";
-  return lesbar(lesbar(c, akzentFlaeche(c, dunkel, thema), zu, BEDIEN_ZIEL), dunkel ? STIL_GRUND[thema][1] : "#ffffff", zu, BEDIEN_ZIEL);
+  return lesbar(lesbar(c, akzentFlaeche(c, dunkel), zu, BEDIEN_ZIEL), dunkel ? GRUND_DUNKEL : "#ffffff", zu, BEDIEN_ZIEL);
 }
 // Rand des Hauptknopfs: sehr helle Farben dunkel umrandet; im Dunkeln wie die Fläche (der rohe Akzent wirkte dort wie ein Fehler-Ring), hell der Akzent.
 const akzentRand = (c, dunkel) => farbHell(c) ? "color-mix(in srgb, #000 28%, transparent)" : dunkel ? knopfFarbe(c) : c;
@@ -863,40 +901,31 @@ function schriftAufFarbe(c) {                                   // helle Farben 
   return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? "#111318" : "#fff";
 }
 const weitMq = window.matchMedia("(min-width: 900px)");
-const GLAS_SCHWACH = 4;                                         // Kerne bzw. GB Speicher: „Automatisch“ schaltet das Glas darunter ab (Unschärfe kostet schwache Geräte Bildrate)
-// Glaseffekt aus? „an“ und „aus“ fest, „auto“ nach Gerät: aus bei höchstens GLAS_SCHWACH Kernen oder GB. „Transparenz reduzieren“ des Systems schaltet es im CSS immer ab.
-function glasAus(wahl, nav = navigator) {
-  return wahl === "aus" || (wahl === "auto" && ((nav.hardwareConcurrency || Infinity) <= GLAS_SCHWACH || (nav.deviceMemory || Infinity) <= GLAS_SCHWACH));
+const GLAS_SCHWACH = 4;                                         // Kerne bzw. GB Speicher: darunter ist das Glas aus (Unschärfe kostet schwache Geräte Bildrate)
+// Glaseffekt aus? Nur nach Gerät: aus bei höchstens GLAS_SCHWACH Kernen oder GB, fehlende Angaben zählen als stark. „Transparenz reduzieren“ des Systems schaltet es im CSS immer ab.
+function glasAus(nav = navigator) {
+  return (nav.hardwareConcurrency || Infinity) <= GLAS_SCHWACH || (nav.deviceMemory || Infinity) <= GLAS_SCHWACH;
 }
-// Stile (Themen) je Gerät: Name an :root (data-thema) und sichtbarer Name; die Werte stehen in themen/<name>.css, „glas“ ist grundlage.css selbst.
-const THEMEN = {glas: "Glas", flaechig: "Flächig", kompakt: "Kompakt", klar: "Klar", kraeftig: "Kräftig", terminal: "Terminal"}, THEMA_VORGABE = "glas";
-// Gespeicherter Stil oder „glas“, wenn er fehlt oder unbekannt ist (hasOwn: Namen wie „toString“ zählen nicht).
-const themaWahl = w => Object.hasOwn(THEMEN, w) ? w : THEMA_VORGABE;
-// Stil dieses Geräts (nur im Gerät gespeichert, nicht im Profil und nicht in der Synchronisierung).
-const themaAktiv = () => themaWahl(speicher.l("ho_thema", THEMA_VORGABE));
 // System wechselt Hell/Dunkel: bei „Automatisch“ Farben neu rechnen und die Seite neu zeichnen (wie farbeUmschalten, F-AK3)
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (speicher.l("ho_farbe", FARBE_VORGABE) === "auto") { darstellung(); seitenCacheLeeren(); zeigen(); } });
-// Wendet die gespeicherten Einstellungen an: Design (Web oder Handy), Stil, Hell oder Dunkel, Glaseffekt, Akzentfarbe (CSS-Variablen, Cookie für die Exporte, App-Symbol)
+// Wendet die gespeicherten Einstellungen an: Design (Web oder Handy, nur nach der Fensterbreite), Hell oder Dunkel, Glaseffekt (nur nach Gerät), Akzentfarbe (CSS-Variablen, Cookie für die Exporte, App-Symbol)
 // und den Platz der Schnell-Symbole.
 function darstellung() {
-  const d = speicher.l("ho_design", "auto"), f = speicher.l("ho_farbe", FARBE_VORGABE), a = speicher.l("ho_akzent", "blau"), dunkel = istDunkel();
-  document.body.dataset.design = d === "auto" ? (weitMq.matches ? "web" : "handy") : d;
+  const f = speicher.l("ho_farbe", FARBE_VORGABE), a = speicher.l("ho_akzent", AKZENT_VORGABE), dunkel = istDunkel();
+  document.body.dataset.design = weitMq.matches ? "web" : "handy";
   if (!zeitDaneben()) zeitDanebenZu();
-  const thema = themaAktiv();
-  document.documentElement.dataset.thema = thema;
-  // die anderen Stile sind deckend
-  if (thema !== THEMA_VORGABE || glasAus(speicher.l("ho_glas", "auto"))) document.documentElement.dataset.glas = "aus"; else document.documentElement.removeAttribute("data-glas");
+  if (glasAus()) document.documentElement.dataset.glas = "aus"; else document.documentElement.removeAttribute("data-glas");
   if (f === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.dataset.theme = f === "dunkel" ? "dark" : "light";
   const c = akzentFarbe(a);
   document.documentElement.style.setProperty("--acc", c);
   document.documentElement.style.setProperty("--acc-t", schriftAufFarbe(c));
   document.documentElement.style.setProperty("--acc-k", knopfFarbe(c));
-  document.documentElement.style.setProperty("--acc-fg", akzentSchrift(c, dunkel, thema));
-  document.documentElement.style.setProperty("--acc-ui", akzentBedien(c, dunkel, thema));
+  document.documentElement.style.setProperty("--acc-fg", akzentSchrift(c, dunkel));
+  document.documentElement.style.setProperty("--acc-ui", akzentBedien(c, dunkel));
   document.documentElement.style.setProperty("--acc-rand", akzentRand(c, dunkel));
   document.documentElement.style.setProperty("--acc-bg", `color-mix(in srgb, ${c} 14%, var(--card))`);
   document.documentElement.style.setProperty("--schimmer", schimmerAnteil(c, dunkel) + "%");
-  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = STIL_GRUND[thema][dunkel ? 1 : 0];   // Statusleiste in der Grundfarbe des Stils, nicht im Akzent
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = dunkel ? GRUND_DUNKEL : GRUND_HELL;   // Statusleiste in der Grundfarbe, nicht im Akzent
   document.cookie = KEKS + "ho_akzent_hex=" + c.replace("#", "") + "; path=" + ORT + "; SameSite=Lax; max-age=31536000" + COOKIE_SICHER;      // der Server färbt damit die Exportdateien
   symbolFarbe(c);
   // Schnell-Symbole: im Web-Design (Rechner) links unter dem Logo, am Handy oben in der Leiste vor dem Menü (Wunsch vom 17.11.2026)
@@ -916,7 +945,7 @@ function symbolRand(svg, c) {                                   // heller Hinter
   return farbHell(c) ? svg.replace("</svg>", '<rect x="2" y="2" width="176" height="176" rx="38" fill="none" stroke="#000" stroke-opacity=".3" stroke-width="4"/></svg>') : svg;
 }
 // Zeichnet das App-Symbol auf der Knopf-Fläche des Akzents (knopfFarbe), die Uhr in der Schrift auf dem Akzent (schriftAufFarbe wie bei Knöpfen), und setzt es
-// als Logo, Tab-Symbol und Symbol für den Home-Bildschirm (PNG über ein Canvas). Knopf-Fläche statt rohem Akzent: bei Gold, Cyan und Türkis hatte die weiße Uhr unter 3:1.
+// als Logo, Tab-Symbol und Symbol für den Home-Bildschirm (PNG über ein Canvas). Knopf-Fläche statt rohem Akzent: auf hellen Akzenten (etwa Orange) hätte die weiße Uhr sonst unter 3:1.
 function symbolFarbe(c) {
   try {
     const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(symbolRand(symbolSvg(knopfFarbe(c)).replace(/(["'])#fff\1/g, `$1${schriftAufFarbe(c)}$1`), knopfFarbe(c)));
@@ -1057,7 +1086,7 @@ function wegeHtml(art) {
 // Schnell-Symbole: im Web-Design (Rechner) links unter dem Logo, am Handy oben in der Leiste vor dem Menü (Wunsch vom 17.11.2026); das „?“ zur Seite als erstes (Auftrag 23.11.2026)
 function schnellSymbole() {
   const web = document.body.dataset.design === "web", ziel = web ? $("#schnell") : $(".kopfleiste");
-  if (ziel) for (const id of ["titel-hilfe", "sync-symbol", "farb-knopf", "zu-heute", "abmelden-knopf"]) { const k = $("#" + id); if (k && k.parentNode !== ziel) web ? ziel.append(k) : ziel.insertBefore(k, $("#menue")); }
+  if (ziel) for (const id of ["titel-hilfe", "sync-symbol", "farb-knopf", "zu-heute", "suche-knopf", "abmelden-knopf"]) { const k = $("#" + id); if (k && k.parentNode !== ziel) web ? ziel.append(k) : ziel.insertBefore(k, $("#menue")); }
 }
 // Desktop-Fassung: in welchem Browser das Fenster der App aufgeht. erstesMal: Frage auf der Übersicht, solange nichts gewählt ist und es eine Wahl gibt.
 async function browserWahlHtml(erstesMal) {
@@ -1124,19 +1153,89 @@ function rundgangStempeln() {
 function rundgangSeiten() {
   return RUNDGANG_SEITEN.filter(s => !s.nur || s.nur()).map(s => ({titel: s.titel, text: s.text()}));
 }
-// Zeigt Seite i des Rundgangs im Blatt (Zurück, Weiter, Beenden; Esc beendet wie jedes Blatt), Fokus auf die Überschrift.
-function rundgang(i) {
-  const seiten = rundgangSeiten(), s = seiten[i];
-  blatt(`<h3 tabindex="-1">${s.titel}</h3><p class="hinweis">Seite ${i + 1} von ${seiten.length}</p><p>${s.text}</p>
-    <div class="knoepfe">${i > 0 ? `<button ${kl("rundgang", i - 1)}>Zurück</button>` : ""}${i < seiten.length - 1 ? `<button class="prim" ${kl("rundgang", i + 1)}>Weiter</button>` : ""}<button ${kl("blattZu")}>Beenden</button></div>`);
+// Zeigt Seite i einer Folge von Seiten ({titel, text}) im Blatt: „Seite i von n“ (mit vorspann davor), Text, Zurück, Weiter (Aktion aktion mit i ± 1), Beenden
+// (Esc beendet wie jedes Blatt), dazu extra (weitere Knöpfe). Fokus auf die Überschrift. Genutzt vom Rundgang und von „Neu in dieser Version“.
+function rundgangBlatt(seiten, i, aktion, vorspann = "", extra = "") {
+  const s = seiten[i];
+  blatt(`<h3 tabindex="-1">${s.titel}</h3><p class="hinweis">${vorspann}Seite ${i + 1} von ${seiten.length}</p><p>${s.text}</p>
+    <div class="knoepfe">${i > 0 ? `<button ${kl(aktion, i - 1)}>Zurück</button>` : ""}${i < seiten.length - 1 ? `<button class="prim" ${kl(aktion, i + 1)}>Weiter</button>` : ""}${extra}<button ${kl("blattZu")}>Beenden</button></div>`);
   $("#blatt-inh h3").focus();
 }
+// Zeigt Seite i des Rundgangs.
+function rundgang(i) { rundgangBlatt(rundgangSeiten(), i, "rundgang"); }
 // Startet den Rundgang auf der ersten Seite.
 function rundgangStart() { rundgang(0); }
+
+// ---- „Neu in dieser Version“ (Release 25.11.2026): nach einem Update einmal je Liste und Gerät ein kurzer Rundgang im selben Blatt, überspringbar (Beenden, Esc),
+// abschaltbar („Nicht mehr zeigen“ und Schalter unter Einstellungen, Aussehen; ein Schlüssel für beides). NEU_STAND kennzeichnet die Liste, nicht die Version:
+// Ein Release ohne neue Liste zeigt nichts erneut. Beim nächsten Release Liste und Stand zusammen ersetzen.
+const NEU_STAND = "2026-11-25", NEU_MAX = 5;
+const NEU_GESEHEN = "ho_neu_gesehen", NEU_ZEIGEN = "ho_neu_zeigen", NEU_AUS = "aus";
+// Schritte: titel, text (ohne HTML), ziel (Adresse für „Ansehen“), optional selektor (Stelle auf der Zielseite), nur() wie beim Rundgang und da() für Funktionen,
+// die in dieser Fassung fehlen können. Fehlt die Zielseite oder ist sie aus, ist nur() oder da() falsch, fällt der Schritt still weg.
+// Die Namen in da() und selektor tragen die Teams beim Zusammenführen ein (Vertrag V6); ein falscher Name lässt den Schritt nur wegfallen.
+const NEU_IN_VERSION = [
+  {titel: "Einträge einzeln", text: "Auf der Seite Tag steht jeder Eintrag für sich. Du kannst ihn einzeln ändern, löschen oder einen weiteren hinzufügen. Oben stehen Soll und Ist des Tages.",
+    ziel: "#/tag", selektor: ".tag.einzel", da: () => typeof eintragBearbeiten === "function"},
+  {titel: "Gleitzeit-Verlauf", text: "Tag, Woche und Monat zeigen jetzt den Verlauf deines Gleitzeit-Kontos: die letzten 10 Tage, 3 Wochen oder 3 Monate.",
+    ziel: "#/woche/gleitzeit", nur: () => modulAn("gleitzeit"), da: () => typeof gleitzeitVerlauf === "function"},
+  {titel: "Feierabend", text: "Läuft die Stempeluhr, siehst du, wann dein Soll erreicht ist und wann die 10-Stunden-Grenze kommt.",
+    ziel: "#/start", selektor: "#hk-grenze", nur: () => modulAn("stempel"), da: () => typeof feierabendKachel === "function"},
+  {titel: "Pause stempeln", text: "An der Stempeluhr gibt es „Pause“ und „Weiter“. Die Lücke dazwischen zählt auf die Pflichtpause an.",
+    ziel: "#/start", selektor: ".heute-karte", nur: () => modulAn("stempel"), da: () => typeof pauseMachen === "function"},
+  {titel: "Quote-Ampel", text: "Die Übersicht und der Monat zeigen, wie viele Stunden du im Büro noch brauchst, damit du deine Homeoffice-Grenze einhältst.",
+    ziel: "#/start", selektor: ".quote-ampel", nur: () => hoModus() === "grenze", da: () => typeof quoteKachel === "function"},
+  {titel: "Suche", text: "Unter Zeit › Suche (oder mit der Lupe) findest du Tage nach Notiz, Art, Ort und Zeitraum. Ein Treffer öffnet den Tag.", ziel: "#/suche", selektor: ".card.suche"},
+  {titel: "Papierkorb", text: "Gelöschte Einträge liegen 30 Tage im Papierkorb. Von dort holst du sie zurück.", ziel: "#/sicherung", selektor: "#papierkorb-karte"},
+];
+// Schritte, die es auf diesem Gerät gibt (Zielseite vorhanden und an, nur() und da() wahr), höchstens NEU_MAX.
+function neuSchritte() {
+  return NEU_IN_VERSION.filter(s => !seiteWeg(s.ziel.split("/")[1]) && (!s.nur || s.nur()) && (!s.da || s.da())).slice(0, NEU_MAX);
+}
+// Beim Laden, bevor anlauf.js die Version merkt: Ein Gerät ohne gemerkte Version (alteVersion leer) ist neu, für es gilt die Liste als gesehen.
+// Gleich hier und nicht erst nach der ersten Seite, damit auch ein früh gesicherter Speicher (Design-Prüfung) den Merker schon hat.
+function neuErsterStart(alteVersion) { if (!alteVersion) speicher.s(NEU_GESEHEN, NEU_STAND); }
+// Ist der Rundgang jetzt dran? Nicht abgeschaltet, Liste auf diesem Gerät noch nicht gesehen, nicht in der Demo, kein anderes Blatt offen.
+function neuFaellig() {
+  return speicher.l(NEU_ZEIGEN, "") !== NEU_AUS && speicher.l(NEU_GESEHEN, "") !== NEU_STAND && !DEMO?.aktiv && !blattOffen();
+}
+// Nach der ersten Seite: zeigt den Rundgang, wenn er dran ist, und merkt die Liste als gesehen (ohne Schritte still). Der Fokus geht danach zum Seitentitel
+// zurück (blatt merkt das fokussierte Element), nicht ins Leere.
+function neuAnbieten() {
+  if (!neuFaellig()) return;
+  speicher.s(NEU_GESEHEN, NEU_STAND);
+  if (!neuSchritte().length) return;
+  $("#titel").focus({preventScroll: true});
+  neuRundgang(0);
+}
+// Zeigt Schritt i von „Neu in dieser Version“ mit „Ansehen“ (zur Stelle) und „Nicht mehr zeigen“.
+function neuRundgang(i) {
+  rundgangBlatt(neuSchritte(), i, "neuRundgang", "Neu in dieser Version · ", `<button ${kl("neuAnsehen", i)}>Ansehen</button><button ${kl("neuNichtMehr")}>Nicht mehr zeigen</button>`);
+}
+// „Ansehen“: schließt den Rundgang, öffnet die Zielseite und holt die Stelle (selektor) ins Bild; fehlt sie, bleibt die Seite oben.
+function neuAnsehen(i) {
+  const s = neuSchritte()[i];
+  blattZu();
+  if (s.selektor) window.nachher = () => ueberschriftZeigen($("#inhalt").querySelector(s.selektor));
+  if (location.hash === s.ziel) zeigen(); else location.hash = s.ziel;
+}
+// „Nicht mehr zeigen“: schaltet den Rundgang nach Updates auf diesem Gerät ab (wie der Schalter in den Einstellungen) und schließt ihn.
+function neuNichtMehr() {
+  speicher.s(NEU_ZEIGEN, NEU_AUS);
+  blattZu();
+  toast("Wird nicht mehr gezeigt. Einschalten unter Einstellungen, Aussehen.");
+}
+// Schalter der Karte: an zeigt den Rundgang nach dem nächsten Update wieder.
+function neuSchalten(an) { speicher.s(NEU_ZEIGEN, an ? "" : NEU_AUS); }
+// Karte „Neu in dieser Version“ (Einstellungen, Aussehen): Schalter für dieses Gerät und, wenn es Schritte gibt, „Jetzt ansehen“.
+function neuKarte() {
+  const an = speicher.l(NEU_ZEIGEN, "") !== NEU_AUS, jetzt = neuSchritte().length ? `<div class="knoepfe"><button ${kl("neuRundgang", 0)}>Jetzt ansehen</button></div>` : "";
+  return `<div class="card"><h2>Neu in dieser Version</h2><div class="zeile"><span>Nach einem Update zeigen<br><small>kurzer Rundgang durch das Neue, gilt nur auf diesem Gerät</small></span><input type="checkbox" ${an ? "checked" : ""} data-wechsel="neuSchalten" aria-label="Neu in dieser Version nach einem Update zeigen"></div>${jetzt}</div>`;
+}
 // ---- Hilfen: Art-Wahl (Homeoffice ist vorausgewählt), Toast
 function artWahl(id, wert, frage) {
   if (einOrt()) return festerOrt(id);
-  return `<label>${frage}</label><div class="seg" id="${id}">${[["ho", "Homeoffice"], ["dst", "Büro"]].map(([k, t]) => `<button type="button" data-v="${k}" class="${wert === k ? "on" : ""}">${t}</button>`).join("")}</div>`;
+  return `<label>${frage}</label>${segHtml([["ho", "Homeoffice"], ["dst", "Büro"]], wert, {id})}`;
 }
 // Macht die beiden Knöpfe einer Ortswahl (Homeoffice oder Büro) zu einer Auswahl.
 function artBinden(id) {
@@ -1228,9 +1327,57 @@ const uhr = s => { s = Math.max(0, Math.floor(s)); return `${pad(Math.floor(s / 
 
 // ---- Stempeluhr: Kommen / Gehen
 let stempelDaten = null;
-const STEMPEL_KOMMEN = "Kommen", STEMPEL_GEHEN = "Gehen";
-// Beschriftung des Stempel-Knopfs: „Gehen (seit 07:30)“, wenn die Uhr läuft (Beginn aus stempelDaten), sonst „Kommen“.
-const stempelKnopf = d => d && d.laeuft ? `${STEMPEL_GEHEN} (seit ${stempelSeit()})` : STEMPEL_KOMMEN;
+const STEMPEL_KOMMEN = "Kommen", STEMPEL_GEHEN = "Gehen", STEMPEL_PAUSE = "Pause", STEMPEL_WEITER = "Weiter";
+// Beschriftung des Stempel-Knopfs: „Gehen (seit 07:30)“, wenn die Uhr läuft (Beginn aus stempelDaten), in einer Pause von heute „Weiter“, sonst „Kommen“.
+const stempelKnopf = d => d && d.laeuft ? `${STEMPEL_GEHEN} (seit ${stempelSeit()})` : pauseHeute() ? STEMPEL_WEITER : STEMPEL_KOMMEN;
+// ---- Pause und Weiter (Auftrag vom 25.11.2026): „Pause“ bucht Gehen, „Weiter“ bucht Kommen; die Lücke dazwischen zählt auf die Pflichtpause an.
+// Dass das letzte Gehen eine Pause war, merkt sich nur dieses Gerät im lokalen Speicher ({datum, seit, art}), nicht die Datenbank.
+const PAUSE_MERKER = "ho_pause";
+const PAUSE_OFFEN = "Pause seit {seit} Uhr am {tag} nicht beendet. Nachtragen?";
+// Die gemerkte Pause {datum, seit, art} oder null.
+function pauseGemerkt() { try { return JSON.parse(speicher.l(PAUSE_MERKER, "")); } catch (e) { return null; } }
+// Läuft heute eine Pause (gemerkt, keine Uhr läuft)?
+const pauseHeute = () => !(stempelDaten && stempelDaten.laeuft) && pauseGemerkt()?.datum === zeitHeuteIso();
+// „Pause“: bucht die laufende Zeit jetzt aus (Gehen, Pflichtpause rechnet der Dienst über den ganzen Tag) und merkt die Pause für Band und Weiter.
+async function pauseMachen() {
+  const {art, start_datum: datum} = stempelDaten, seit = jetztZeit();
+  try {
+    const r = await api("POST", "/stempel", {aktion: "stop", art, ende: seit, pause: null, freigabe: false});
+    speicher.s(PAUSE_MERKER, JSON.stringify({datum, seit, art}));
+    stempelUebernehmen(r, true);
+    const text = `${STEMPEL_PAUSE} seit ${seit} Uhr · ${zeitText(minuten(r.gebucht))} Std. gebucht.`;
+    rueckgaengigZeigen(r, text) || toast(text);
+  } catch (e) { formFehler($("#s-fehler"), e.message); }
+}
+// „Weiter“: Kommen mit Ortswahl, vorbelegt mit dem Ort vor der Pause; mit nur einem Ort ohne Wahl.
+function weiterMachen() {
+  const p = pauseGemerkt() || {}, art = einOrt() || p.art || "ho";
+  if (einOrt()) return kommenMit(art);
+  blatt(`<h3>${STEMPEL_WEITER}</h3><p class="hinweis" data-stil="text-align:center">Pause seit ${esc(p.seit || "")} Uhr. Beginn jetzt (${jetztZeit()} Uhr).</p>
+    ${artWahl("w-art", art, "Wo arbeitest du weiter?")}<div id="s-fehler"></div>
+    <div class="knoepfe"><button class="prim" id="w-ok">${STEMPEL_WEITER}</button></div>`);
+  artBinden("w-art");
+  $("#w-ok").onclick = gesperrt(() => kommenMit(artWert("w-art")));
+}
+// Band einer Pause von heute (ohne laufende Uhr): „Pause seit 10:30“ und „Weiter ›“, beides öffnet Weiter.
+function pauseBand(b) {
+  const seit = esc(pauseGemerkt().seit);
+  b.dataset.pause = 1;
+  b.innerHTML = `<button type="button" id="b-korrektur" aria-label="${STEMPEL_PAUSE} seit ${seit} Uhr. ${STEMPEL_WEITER}"><i></i><span>${STEMPEL_PAUSE} seit\u00a0${seit}</span></button>`
+    + `<button type="button" id="b-gehen" aria-label="${STEMPEL_WEITER} (einbuchen)"><u>${STEMPEL_WEITER} ›</u></button>`;
+  for (const id of ["#b-korrektur", "#b-gehen"]) $(id).onclick = weiterMachen;
+}
+// Beim Start der App (Pausenregel Punkt 8): eine Pause von einem früheren Tag ohne Weiter einmal melden, mit Sprung zur Seite Tag; „Nicht mehr zeigen“
+// vergisst sie (je Fall). Nicht in der Demo, nicht über einem Blatt.
+async function pauseOffenPruefen() {
+  const p = pauseGemerkt();
+  if (!p || p.datum >= zeitHeuteIso() || blattOffen()) return;
+  try { if ((DEMO || await api("GET", "/demo")).aktiv) return; } catch (e) { return; }
+  blatt(`<h3>${STEMPEL_PAUSE} nicht beendet</h3><p id="pause-offen">${esc(PAUSE_OFFEN.replace("{seit}", p.seit).replace("{tag}", de(p.datum)))}</p>
+    <div class="knoepfe"><a class="btn prim" id="po-tag" href="#/tag/${esc(p.datum)}">Nachtragen</a><button id="po-aus">Nicht mehr zeigen</button></div>`);
+  $("#po-tag").onclick = () => { speicher.s(PAUSE_MERKER, ""); blattZu(); };
+  $("#po-aus").onclick = () => { speicher.s(PAUSE_MERKER, ""); blattZu(); };
+}
 // Neuer Stand nach Kommen, Gehen oder Verwerfen: Banner, Stempel-Taste und der Knopf der Übersicht folgen sofort.
 // Andere Seiten werden nur neu gezeichnet, wenn sich Tagesdaten geändert haben (sonst gingen dort Eingaben verloren).
 function stempelUebernehmen(daten, tagGeaendert) {
@@ -1257,42 +1404,37 @@ const stempelTag = () => stempelDaten.start_datum.split("-").reverse().join(".")
 const stempelSeit = () => stempelFrueher() ? `${stempelTag().slice(0, 6)}, ${stempelDaten.start_text}` : stempelDaten.start_text;
 // Sekunden, die die Stempeluhr schon läuft (Stand vom Server plus die Zeit seitdem).
 function stempelSekunden() { return stempelDaten && stempelDaten.laeuft ? stempelDaten.sekunden + (Date.now() - stempelDaten.t0) / 1000 : 0; }
+// Minuten der laufenden Uhr ohne Runden (Zählregel K4): Minute(jetzt) − Minute(Beginn). Der Dienst liefert den Beginn ohne Sekunden, darum
+// reicht Abschneiden der Sekunden seit dem Beginn; so zählen Kacheln, Band und Vorbelegung der Pause wie „Gehen“.
+const stempelMinuten = () => Math.floor(stempelSekunden() / 60);
 // Läuft die Stempeluhr seit heute (ihre Zeit zählt dann für heute)?
 const stempelHeute = () => !!(stempelDaten && stempelDaten.laeuft) && !stempelFrueher();
 // Ort der laufenden Uhr kurz: „HO“ oder „Büro“.
 const stempelOrt = () => stempelDaten.art === "ho" ? "HO" : "Büro";
-// Minuten der laufenden Stempeluhr, wie „Gehen“ sie jetzt buchen würde: Dauer des Blocks minus Pause nach Regel (wie stempel.stop im Dienst),
-// für die Kacheln der Übersicht und die Seite Tag. 0, wenn keine Uhr läuft oder sie seit einem früheren Tag läuft (die Zeit gehört dann zu jenem Tag).
+// Minuten, um die „Gehen“ jetzt das Ist des Tages erhöhen würde (Tagesrechnung des Dienstes: Pflichtpause, Kappzeit; Stücke „live“ von GET /api/stempel),
+// für die Kacheln der Übersicht und die Seite Tag. Minute = Ende-Minute minus Beginn-Minute, Sekunden fallen weg (K4). 0, wenn keine Uhr läuft oder
+// sie seit einem früheren Tag läuft (die Zeit gehört dann zu jenem Tag).
 function laufendeMinuten() {
   if (!stempelHeute()) return 0;
-  const dauer = Math.floor(stempelSekunden() / 60);
-  return dauer - pauseAuto(dauer);
+  const i = stempelMinuten();                                  // Beginn ohne Sekunden (K4)
+  const [von, wert, steigung] = (stempelDaten.live || []).reduce((s, x) => x[0] <= i ? x : s, [0, 0, 1]);
+  return wert + steigung * (i - von);
 }
-// Hält „Heute“ und „Diese Woche“ der Übersicht (Ist, Saldo, letzter Balken, „Läuft seit“) und die Karte der Seite Tag mit der laufenden Uhr aktuell.
+// Hält „Heute“ und „Diese Woche“ der Übersicht (Ist, Saldo, „Läuft seit“) und die Karte der Seite Tag mit der laufenden Uhr aktuell.
 function gleitzeitLaufend() {
   [$("#gz-tag"), $("#gz-kw")].forEach(e => { if (e) e.textContent = zeitText(+e.dataset.min + laufendeMinuten()); });
   uebersichtLaufend();
   tagLaufend();
+  feierabendLaufend();
 }
 // ---- Übersicht mit der laufenden Uhr (Kacheln Heute und Diese Woche, Karte Heute; Bauer in seiten/start.js)
-// Verläufe von Heute und Diese Woche ohne laufende Uhr, je {punkte, datum}: datum ist der Punkt, zu dem die laufende Uhr zählt (heute bzw. Montag)
-let UEBERSICHT_LIVE = {};
-// Punkte mit der laufenden Uhr: Ist der letzte Punkt der von datum, kommt die laufende Zeit zu seinem Saldo; sonst unverändert (die Uhr zählt anderswo).
-function verlaufLive(punkte, datum) {
-  const letzt = punkte.at(-1);
-  return letzt && letzt.datum === datum ? [...punkte.slice(0, -1), {...letzt, saldo_min: (Number(letzt.saldo_min) || 0) + laufendeMinuten()}] : punkte;
-}
 // Satz „Tagessoll erreicht (+00:20)“ ohne das Plus: Text von woche.ZIEL_ERREICHT, ein Test hält beide gleich.
 const ZIEL_ERREICHT_JS = "Tagessoll erreicht ()";
 // Text „Tagessoll erreicht (+00:20)“ für plus Minuten (ab 0), Vorzeichen immer wie woche.fmt_saldo.
 const zielErreicht = plus => ZIEL_ERREICHT_JS.replace("()", `(+${zeitText(plus)})`);
-// Bringt die Kacheln Heute und Diese Woche auf den Stand der Uhr (Saldo, letzter Balken, Satz „Tagessoll erreicht“) und die Karte Heute („Läuft seit“). Geschrieben wird nur, wenn sich
+// Bringt die Kacheln Heute und Diese Woche auf den Stand der Uhr (Saldo, Satz „Tagessoll erreicht“) und die Karte Heute („Läuft seit“). Geschrieben wird nur, wenn sich
 // der Text ändert (höchstens einmal je Minute), kein aria-live: Screenreader und Fokus bleiben in Ruhe. Auf anderen Seiten nichts.
 function uebersichtLaufend() {
-  for (const [art, {punkte, datum}] of Object.entries(UEBERSICHT_LIVE)) {
-    const e = $("#mv-" + art), bild = e && miniVerlaufSvg(verlaufLive(punkte, datum), {art});
-    if (e && e.zuletzt !== bild) { e.innerHTML = bild; e.zuletzt = bild; }
-  }
   for (const e of [$("#gz-saldo-tag"), $("#gz-saldo-kw")]) {
     const m = e ? +e.dataset.min + laufendeMinuten() : 0, txt = zeitText(m, true);
     if (e && e.zuletzt !== txt) { e.textContent = txt; e.className = `saldo ${saldoKlasse(m)}`; e.zuletzt = txt; }
@@ -1303,7 +1445,36 @@ function uebersichtLaufend() {
   if (l && l.zuletzt !== lauf) { l.textContent = lauf; l.zuletzt = lauf; }
 }
 // Dauer der laufenden Uhr als hh:mm (ohne Pause abgezogen: wie lange sie schon läuft).
-const laufText = () => hhmm(Math.floor(stempelSekunden() / 60));
+const laufText = () => hhmm(stempelMinuten());
+// ---- Feierabend: ab wann Tagessoll und 10-Stunden-Grenze erreicht sind (Rechnung im Server: soll_erreicht_um, grenze_10h_um von GET /api/stempel)
+const FEIERABEND_SOLL = "Soll erreicht", FEIERABEND_GRENZE = "10-Stunden-Grenze";   // normaler Bindestrich; zusammen hält am-stueck (white-space: nowrap)
+// „Soll erreicht um 16:30“ bzw. „… seit 16:30“, sobald die Uhr so lange läuft; leer ohne Zeitpunkt. Verglichen wird mit der Dauer seit dem Beginn, nicht mit
+// der Uhr des Geräts, damit eine abweichende Geräte-Uhr nicht stört.
+function feierabendTeil(name, zeitpunkt) {
+  if (!zeitpunkt || !stempelDaten?.laeuft) return "";
+  const erreicht = (Date.parse(zeitpunkt) - Date.parse(stempelDaten.start)) / 1000 <= stempelSekunden();
+  return `${name} ${erreicht ? "seit" : "um"} ${zeitpunkt.slice(11, 16)}`;
+}
+// Teile der Zeile im Band der laufenden Uhr: „Soll erreicht um 16:30“, „10-Stunden-Grenze um 18:30“ (leere fallen weg).
+const feierabendTeile = () => [feierabendTeil(FEIERABEND_SOLL, stempelDaten?.soll_erreicht_um), feierabendTeil(FEIERABEND_GRENZE, stempelDaten?.grenze_10h_um)].filter(Boolean);
+// Zeile im Band als Text: „Soll erreicht um 16:30 · 10-Stunden-Grenze um 18:30“.
+const feierabendText = () => feierabendTeile().join(" · ");
+// Dieselbe Zeile als HTML: jeder Teil am Stück, umgebrochen wird nur am „·“ (sonst „10-Stunden- | Grenze“ bei großer Schrift, Gate 26.11.2026).
+const feierabendHtml = () => feierabendTeile().map(t => `<span class="am-stueck">${esc(t)}</span>`).join(" · ");
+// Text der Grenze als HTML für die schmale Kachel: das Wort und „um 18:30“ je am Stück, umgebrochen wird davor (Sichtung 26.11.2026: ganz am Stück lief
+// die Zeile bei 375 px über den Kachelrand).
+const grenzeKachelHtml = text => `<span class="am-stueck">${esc(FEIERABEND_GRENZE)}</span> <span class="am-stueck">${esc(text.slice(FEIERABEND_GRENZE.length + 1))}</span>`;
+// Zeile der Kachel Heute (das Soll nennt dort schon der Satz des Kerns): 10-Stunden-Grenze, nur wenn die Uhr für den Tag datum läuft; sonst leer.
+function feierabendKachel(datum) {
+  const text = stempelDaten?.start_datum === datum ? feierabendTeil(FEIERABEND_GRENZE, stempelDaten.grenze_10h_um) : "";
+  return text ? `<span id="hk-grenze">${grenzeKachelHtml(text)}</span>` : "";
+}
+// Schaltet „um“ auf „seit“, sobald ein Zeitpunkt erreicht ist; geschrieben wird nur bei geändertem Text (kein aria-live, Fokus bleibt).
+function feierabendLaufend() {
+  const ziel = $("#b-ziel"), text = feierabendText(), grenze = $("#hk-grenze"), grenzeText = feierabendTeil(FEIERABEND_GRENZE, stempelDaten?.grenze_10h_um);
+  if (ziel && text && ziel.textContent !== text) ziel.innerHTML = feierabendHtml();
+  if (grenze && grenzeText && grenze.textContent !== grenzeText) grenze.innerHTML = grenzeKachelHtml(grenzeText);
+}
 const FAB_PLUS = `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>`;     // ohne Stempeluhr-Modul: „Heute eintragen“
 // Kommen: Play-Dreieck, Gehen: Stopp-Quadrat, beide als Fläche in der Schriftfarbe (Entscheidung vom 19.11.2026)
 const FAB_KOMMEN = `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.2v13.6L19.5 12z" fill="currentColor" stroke="none"/></svg>`;
@@ -1371,16 +1542,20 @@ function stempelAnzeige() {
   }
   gleitzeitLaufend();                                              // Kacheln der Übersicht gleich mit der Uhr, nicht erst im nächsten Sekundentakt
   let b = $("#stempel-banner");
-  if (!l) { if (b) b.remove(); return; }
+  if (l && pauseGemerkt()) speicher.s(PAUSE_MERKER, "");          // die Uhr läuft wieder: die Pause ist vorbei
+  if (!l && !pauseHeute()) { if (b) b.remove(); return; }
   if (!b) {
     b = document.createElement("div"); b.id = "stempel-banner";
     $("#huelle").insertBefore(b, $("#inhalt"));
   }
+  if (!l) return pauseBand(b);
+  delete b.dataset.pause;
   // Zwei echte Knöpfe: Ort und Zeit korrigieren den Beginn (seit einem früheren Tag ohne Regel „über Mitternacht“: Blatt der Uhr), „Gehen ›“ öffnet das Blatt.
   // Feste Namen: die Uhr im Band tickt jede Sekunde.
   const ort = stempelDaten.art === "ho" ? "Homeoffice" : "Büro", korrektur = beginnKorrigierbar();
   b.innerHTML = `<button type="button" id="b-korrektur" aria-label="${esc(`Stempeluhr läuft: ${ort} seit ${stempelSeit()}. ${korrektur ? "Beginn korrigieren" : "Öffnen"}`)}"><i></i><span>${ort} seit\u00a0${esc(stempelSeit())}</span><b id="b-uhr">${uhr(stempelSekunden())}</b></button>`
-    + `<button type="button" id="b-gehen" aria-label="${esc(stempelKnopf(stempelDaten))}"><u>${STEMPEL_GEHEN} ›</u></button>`;
+    + `<button type="button" id="b-gehen" aria-label="${esc(stempelKnopf(stempelDaten))}"><u>${STEMPEL_GEHEN} ›</u></button>`
+    + (feierabendText() ? `<small id="b-ziel">${feierabendHtml()}</small>` : "");
   $("#b-korrektur").onclick = korrektur ? beginnKorrigieren : stempelBlatt;
   $("#b-gehen").onclick = stempelBlatt;
 }
@@ -1388,6 +1563,7 @@ function stempelAnzeige() {
 async function stempelBlatt() {
   const d = stempelDaten || {laeuft: false, heute: {}};
   const heuteText = `Heute schon: ${orteText(d.heute.ho, d.heute.dst)}`;
+  if (!d.laeuft && pauseHeute()) return weiterMachen();
   if (!d.laeuft) {
     blatt(`<h3>Stempeluhr</h3><p class="hinweis" data-stil="text-align:center">${heuteText}</p>
       ${artWahl("s-art", "ho", "Wo arbeitest du?")}
@@ -1413,21 +1589,16 @@ async function stempelBlatt() {
       ${vergessen ? `<p class="hinweis" role="status"><b>„Gehen“ vergessen?</b> Die Zeit läuft seit dem ${esc(stempelTag())}. Trage ein, wann du aufgehört hast. Gebucht wird auf den ${esc(stempelTag())}.</p>` : ""}
       ${artWahl("s-art", d.art, "Wo hast du gearbeitet?")}
       <div class="reihe"><div><label>${vergessen ? "Ende <small>(Uhrzeit)</small>" : "Ende <small>(jetzt vorbelegt)</small>"}</label><input id="s-ende" inputmode="numeric" placeholder="hh:mm" value="${vergessen ? "" : jetztZeit()}"></div>
-      <div><label>Pause <small>(nach Regel vorbelegt)</small></label><input id="s-pause" inputmode="numeric" placeholder="hh:mm"></div></div>
+      <div><label>Pause von Hand <small>(leer: nur Pflichtpause)</small></label><input id="s-pause" inputmode="numeric" placeholder="hh:mm"></div></div>
       <div class="zeile"><span>Über 10 Stunden freigegeben</span><input type="checkbox" id="s-frei" aria-label="Über 10 Stunden freigegeben"></div>
       <div id="s-fehler"></div>
-      <div class="knoepfe"><button class="prim" id="s-stop">${STEMPEL_GEHEN}</button>${beginnKorrigierbar() ? `<button ${kl("beginnKorrigieren")}>Beginn korrigieren</button>` : ""}<button class="gef" id="s-weg">Verwerfen</button></div>
-      <p class="hinweis">„Gehen“ zählt die Zeit zum Tag des Beginns dazu. Die Pause richtet sich nach der Pausenregel (${pausenText()}, anteilig, unter ${esc(weg("einstellungen", "arbeitszeit"))} einstellbar), außer du änderst sie. Pro Tag sind höchstens 10 Stunden möglich, mehr nur mit Freigabe.</p>`);
+      <div class="knoepfe"><button class="prim" id="s-stop">${STEMPEL_GEHEN}</button>${vergessen ? "" : `<button id="s-pausieren">${STEMPEL_PAUSE}</button>`}${beginnKorrigierbar() ? `<button ${kl("beginnKorrigieren")}>Beginn korrigieren</button>` : ""}<button class="gef" id="s-weg">Verwerfen</button></div>
+      <p class="hinweis">„Gehen“ zählt die Zeit zum Tag des Beginns dazu, „Pause“ ebenso; danach geht es mit „Weiter“ weiter. Die Pflichtpause (${pausenText()}, anteilig, unter ${esc(weg("einstellungen", "arbeitszeit"))} einstellbar) rechnet die App über den ganzen Tag, Lücken und Pausen von Hand zählen an. Zeit außerhalb der Regelarbeitszeit und über der Tagesgrenze ohne Freigabe verfällt als Kappzeit.</p>`);
     artBinden("s-art");
-    const sPause = () => {                              // Vorbelegung: Regel für die Zeit vom Beginn bis zum Ende, solange du die Pause nicht selbst änderst
-      const f = $("#s-pause"); if (f.dataset.eigen) return;
-      const ende = $("#s-ende").value, d = ende ? (minuten(zeitNorm(ende)) - minuten(stempelDaten.start_text) + 1440) % 1440 : Math.round(stempelSekunden() / 60);
-      f.value = hhmm(pauseAuto(d));
-    };
-    $("#s-ende").onblur = e => { e.target.value = zeitNorm(e.target.value); sPause(); };
-    $("#s-pause").onblur = e => { e.target.value = pauseNorm(e.target.value); e.target.dataset.eigen = e.target.value ? 1 : ""; sPause(); };
-    sPause();
-    $("#s-stop").onclick = gesperrt(() => gehenSenden({art: artWert("s-art"), ende: zeitNorm($("#s-ende").value), pause: $("#s-pause").dataset.eigen ? minuten(pauseNorm($("#s-pause").value)) : null, freigabe: $("#s-frei").checked}));
+    $("#s-ende").onblur = e => { e.target.value = zeitNorm(e.target.value); };
+    $("#s-pause").onblur = e => { e.target.value = pauseNorm(e.target.value); };
+    if ($("#s-pausieren")) $("#s-pausieren").onclick = gesperrt(pauseMachen);
+    $("#s-stop").onclick = gesperrt(() => gehenSenden({art: artWert("s-art"), ende: zeitNorm($("#s-ende").value), pause: $("#s-pause").value ? minuten(pauseNorm($("#s-pause").value)) : null, freigabe: $("#s-frei").checked}));
     $("#s-weg").onclick = gesperrt(async () => {
       if (!(await frage("Laufende Zeit verwerfen? Es wird nichts gebucht.", "Verwerfen", true))) return;
       // Das Rückgängig des Einbuchens ist danach überholt: Die Leiste verschwindet sofort (blattZu() zeigte sie sonst, solange die Anfrage läuft),
@@ -1488,13 +1659,22 @@ let gehenGefragt = "";                                             // Beginn der
 const sitzung = {l(k) { try { return sessionStorage.getItem(EIGEN + k) || ""; } catch (e) { return ""; } }, s(k, v) { try { sessionStorage.setItem(EIGEN + k, v); } catch (e) {} }};
 // Wurde „Gehen“ vergessen? Die Uhr läuft seit einem früheren Tag oder seit über 10 Stunden (genau 10 Stunden noch nicht).
 function gehenVergessen() { return !!(stempelDaten && stempelDaten.laeuft) && (stempelFrueher() || stempelSekunden() > STEMPEL_VERGESSEN_S); }
-// Vorbelegung „Gehen um“ (hh:mm): Beginn + Soll + Pause nach Regel, so dass nach Abzug der Pause das Soll bleibt; höchstens bisMin
-// (23:59 am Tag des Beginns, am selben Tag „jetzt“). Ohne Soll (freier Tag, Abruf fehlgeschlagen) leer.
-function gehenVorschlag(beginnMin, sollMin, bisMin) {
-  if (!(sollMin > 0)) return "";
-  let brutto = sollMin;
-  while (sollMin + pauseAuto(brutto) > brutto) brutto = sollMin + pauseAuto(brutto);   // die Pause wächst mit der Spanne, bis Spanne - Pause = Soll
-  return hhmm(Math.min(beginnMin + brutto, bisMin));
+// Erste Minute ab Beginn, in der „Gehen“ das Ist des Tages um ziel erhöht, aus den Stücken live [Minute, Zuwachs, Steigung] (wie laufendeMinuten);
+// nie erreicht (Kappzeit, Ende des Tages): die Minute, ab der der Zuwachs stehen bleibt.
+function liveErreicht(live, ziel) {
+  for (let j = 0; j < live.length; j++) {
+    const [von, wert, steigung] = live[j], bis = j + 1 < live.length ? live[j + 1][0] : Infinity, i = von + Math.ceil((ziel - wert) / (steigung || 1));
+    if (wert >= ziel) return von;
+    if (steigung > 0 && i < bis) return i;
+  }
+  return live.length ? live[live.length - 1][0] : 0;
+}
+// Vorbelegung „Gehen um“ (hh:mm): erste Minute, ab der „Gehen“ das restliche Soll bucht, nach der Tagesrechnung des Dienstes (Stücke live von
+// GET /api/stempel: Pflichtpause mit Lücken und Pausen von Hand, Kappzeit); höchstens bisMin (23:59 am Tag des Beginns, am selben Tag „jetzt“).
+// Ohne Soll (freier Tag, schon erreicht, Abruf fehlgeschlagen) oder ohne Stücke leer (sonst stünde dort der Beginn).
+function gehenVorschlag(beginnMin, sollMin, bisMin, live = []) {
+  if (!(sollMin > 0) || !live.length) return "";
+  return hhmm(Math.min(beginnMin + liveErreicht(live, sollMin), bisMin));
 }
 // Restliches Soll des Tages, an dem die Uhr begann (Soll fürs Konto abzüglich schon Gebuchtem), in Minuten; 0, wenn es nicht abrufbar ist.
 async function gehenSoll() {
@@ -1507,6 +1687,7 @@ async function gehenSoll() {
 // Öffnet die Rückfrage „Gehen vergessen?“, wenn die Uhr vergessen scheint und seit dem Öffnen noch nicht gefragt wurde. Nicht bei abgeschalteter
 // Stempeluhr, in der Einrichtung, beim Ziel „Gehen nachtragen“ (öffnet das Blatt selbst), in der Demo, nach „Später“ und nie über einem anderen Blatt.
 async function gehenVergessenPruefen() {
+  if (modulAn("stempel") && !(stempelDaten && stempelDaten.laeuft)) return pauseOffenPruefen();
   if (!modulAn("stempel") || !gehenVergessen() || $("#einrichtung") || hashTeile()[1] === "stempel") return;
   const start = stempelDaten.start;
   if (gehenGefragt === start || sitzung.l(GEHEN_SPAETER) === start) return;
@@ -1543,7 +1724,7 @@ function gehenAm(ende) {
 function gehenVergessenBlatt(sollMin) {
   const d = stempelDaten, h = new Date(), frueher = stempelFrueher();
   const bis = frueher ? LETZTE_MINUTE : h.getHours() * 60 + h.getMinutes();
-  const vorschlag = gehenVorschlag(minuten(d.start_text), sollMin, bis);
+  const vorschlag = gehenVorschlag(minuten(d.start_text), sollMin, bis, d.live || []);
   const am = ende => frueher ? ` <small id="gv-am">(am ${esc(gehenAm(ende))})</small>` : "";
   blatt(`<h3>Gehen vergessen?</h3>
     <p class="hinweis">Die Stempeluhr läuft seit ${esc(stempelTag())}, ${esc(d.start_text)} Uhr (${d.art === "ho" ? "Homeoffice" : "Büro"}). Wann hast du aufgehört?</p>
@@ -1572,7 +1753,7 @@ function jetztZeit() { const d = new Date(); return `${pad(d.getHours())}:${pad(
 // und die Zahl der offenen Zu-tun-Einträge am Symbol der Übersicht.
 // Acht Bereiche in der gewünschten Reihenfolge (19.11.2026, 00:15); je Reiter [Seite, Beschriftung]. Eine Seite steht in genau einem Bereich.
 const BEREICHE = [["start", "Übersicht", [["start", "Übersicht"]]],
-  ["zeit", "Zeit", [["tag", "Tag"], ["woche", "Woche"], ["monat", "Monat"]]],
+  ["zeit", "Zeit", [["tag", "Tag"], ["woche", "Woche"], ["monat", "Monat"], ["suche", "Suche"]]],
   ["homeoffice", "Homeoffice", [["horest", "Spielraum"], ["jahr", "Jahr"]]],
   ["abwesenheit", "Abwesenheit", [["urlaub", "Urlaub"], ["krank", "Krank"], ["sondertage", "Sondertage"]]],
   ["auswertung", "Auswertung", [["monatsnachweis", "Monatsnachweis"], ["export", "Export"], ["steuer", "Steuer"]]],
@@ -1726,6 +1907,7 @@ const UEBERSICHT_KACHELN = [
   {id: "jahreswechsel", name: "Jahreswechsel (im Januar)", da: () => true},
   {id: "monat", name: "Quote im Monat", da: () => !einOrt()},
   {id: "jahr", name: "Quote im Jahr", da: () => !einOrt()},
+  {id: "quote", name: "Quote-Ampel", da: () => mitGrenze()},
   {id: "urlaub", name: "Urlaub", da: () => modulAn("urlaub")},
   {id: "krank", name: "Krank", da: () => modulAn("krank")},
   {id: "freizeit", name: "Freizeitkonto", da: () => modulAn("freizeit")},
@@ -1861,7 +2043,7 @@ function scrollGemerkt() {
 
 // ---- „?“ neben dem Seitentitel (Hilferunde 23.11.2026): öffnet die Hilfe beim Abschnitt der Seite und merkt den Rückweg (bausteine/blatt.js).
 // Abschnitt je Seite, Unterseiten als „seite/unter“ (fehlt eine, gilt die Seite); Ersatz, wenn der Abschnitt in dieser Fassung ausgeblendet ist.
-const HILFE_ZU_SEITE = {start: "uebersicht_karten", tag: "tag_blatt", woche: "buchen", monat: "monat_raster", horest: "spielraum", jahr: "jahresrueckblick", urlaub: "urlaub", krank: "krank", sondertage: "sondertage", monatsnachweis: "monatsnachweis", export: "exporte", steuer: "uebersicht", sicherung: "sicherung", sync: "sync", einstellungen: "gueltigkeit", "einstellungen/arbeitszeit": "abschnitte", "einstellungen/person": "startwerte", "einstellungen/aussehen": "aussehen", "einstellungen/module": "module", "einstellungen/geraete": "update"};
+const HILFE_ZU_SEITE = {start: "uebersicht_karten", tag: "tag_blatt", woche: "buchen", monat: "monat_raster", suche: "suche_tage", horest: "spielraum", jahr: "jahresrueckblick", urlaub: "urlaub", krank: "krank", sondertage: "sondertage", monatsnachweis: "monatsnachweis", export: "exporte", steuer: "uebersicht", sicherung: "sicherung", sync: "sync", einstellungen: "gueltigkeit", "einstellungen/arbeitszeit": "abschnitte", "einstellungen/person": "startwerte", "einstellungen/aussehen": "aussehen", "einstellungen/module": "module", "einstellungen/geraete": "update"};
 const HILFE_ERSATZ = {steuer: ["quote"], horest: ["quote"], jahr: ["quote"], woche: ["tag_blatt"], "einstellungen/geraete": ["sync", "personen"]};
 const HILFE_GRUND = "aufbau";                                        // letzter Ersatz: wie die App aufgebaut ist (immer sichtbar)
 // Abschnitt der Hilfe für eine Seite und Unterseite: der eigene, sonst der erste sichtbare Ersatz, sonst HILFE_GRUND (hilfeSichtbar aus seiten/hilfe.js).
@@ -1895,13 +2077,19 @@ function zeitText(m, vorz) {
   const h = Math.round(Math.abs(m) * HUNDERTSTEL / MINUTEN_JE_STUNDE);     // ganze Zahlen: Math.round rundet .5 auf, also wie ROUND_HALF_UP
   return (m < 0 ? "−" : (vorz && m > 0 ? "+" : "")) + Math.floor(h / HUNDERTSTEL) + "," + pad(h % HUNDERTSTEL);
 }
+// Minuten aus „6:30“, „6,5“ oder „6“ (Summe der Stunden je Tag, Einträge ohne Uhrzeit der Seite Tag, auch aus zeitText); was sich nicht lesen lässt, ergibt NaN (prüfen tut der Server).
+function dauerMinuten(t) {
+  const m = /^(\d{1,2}):([0-5]\d)$/.exec(t);
+  if (m) return +m[1] * 60 + +m[2];
+  return /^\d{1,2}([.,]\d+)?$/.test(t) ? Math.round(parseFloat(t.replace(",", ".")) * 60) : NaN;
+}
 // ---- bausteine/formate.js ----
 "use strict";
 // Zeiterfassung. © 2026 David Saluda. Alle Rechte vorbehalten. Erstellt mit Unterstützung von KI (Claude, Anthropic).
 // Format-Knöpfe der Exporte nach den Format-Modulen (ex_pdf, ex_office …); gemeinsam für die Seiten Export und Steuer, damit abgeschaltete Formate überall fehlen.
 // Formate der Homeoffice-Übersicht (api/steuer/<Jahr>.<Endung>): [Name, Endung].
-const FORMATE_UEBERSICHT = [["PDF", "pdf"], ["Excel", "xlsx"], ["Word", "docx"], ["ODT", "odt"], ["ODS", "ods"], ["Markdown", "md"], ["Text", "txt"], ["JSON", "json"], ["XML", "xml"], ["CSV", "csv"]];
-const ENDUNG_MODUL = {pdf: "ex_pdf", docx: "ex_office", odt: "ex_office", ods: "ex_office", xlsx: "ex_office", md: "ex_text", txt: "ex_text", json: "ex_daten", xml: "ex_daten", csv: "ex_daten", ics: "ex_kalender"};
+const FORMATE_UEBERSICHT = [["PDF", "pdf"], ["Excel", "xlsx"]];
+const ENDUNG_MODUL = {pdf: "ex_pdf", docx: "ex_office", xlsx: "ex_office", csv: "ex_daten", ics: "ex_kalender"};   // Word (docx) nur beim Monatsnachweis
 // Ist der Link eines Exports (nach Dateiendung) bei den eingeschalteten Modulen erlaubt?
 const linkAn = u => modulAn(ENDUNG_MODUL[u.split("?")[0].split(".").pop()] || "");
 // Format-Knöpfe einer Karte (erster hervorgehoben), nur die von den Modulen erlaubten; leer, wenn keiner bleibt.
@@ -1912,11 +2100,20 @@ function exportKnoepfe(links, titel) {
 // ---- bausteine/gleitzeit_verlauf.js ----
 "use strict";
 // Zeiterfassung. © 2026 David Saluda. Alle Rechte vorbehalten. Erstellt mit Unterstützung von KI (Claude, Anthropic).
-// Baustein Gleitzeit-Verlauf: Karte für die Seiten Woche und Jahr (Jahresrückblick), Daten aus GET /api/gleitzeit/verlauf/<J>.
+// Baustein Gleitzeit-Verlauf: Karte für die Seiten Tag, Woche, Monat (Zeitraum, GET /api/gleitzeit/verlauf?von=&bis=) und Jahr (Jahresrückblick,
+// GET /api/gleitzeit/verlauf/<J>), dazu das Bild der Kachel „Gleitzeit“ der Übersicht (Wunsch 25.11.2026).
 // Maße des Gleitzeit-Verlaufs (viewBox): kleinste Breite, höchster Maßstab (px je Einheit), Höhe, Rand oben/unten für Grenztexte und die zwei Zeilen der KW-Achse, Rand links für die Stunden.
 const GZ_BREITE = 360, GZ_SKALA = 4 / 3, GZ_HOEHE = 152, GZ_OBEN = 16, GZ_UNTEN = 32, GZ_LINKS = 40, GZ_STRICH = "6 4", GZ_PUNKT_R = 3;
 // Stundenachse (Wunsch 23.11.2026): höchstens so viele Abschnitte, Schritte 1, 2, 5 mal 10er-Potenz; KW-Achse: Marke alle 5 KW, am Handy nur jede zweite (alle 10 KW).
 const GZ_ABSCHNITTE = 5, GZ_SCHRITTE = [1, 2, 5], GZ_KW_SCHRITT = 5, GZ_KW_GROB = 10, GZ_KW_RAND = 8, GZ_KW_ZEILE = 13, MIN_JE_STUNDE = 60;
+// Zeiträume der Seiten (Wunsch 25.11.2026): Tag die letzten 10 Tage, Woche die letzten 3 Wochen, Monat die letzten 3 Monate, je bis zum gezeigten Zeitraum.
+const GZ_TAGE_ZURUECK = 9, GZ_WOCHEN_ZURUECK = 2, GZ_MONATE_ZURUECK = 2, GZ_TAG_MS = 86400000;
+const GZ_ZEITRAUM_TEXT = {tag: "Letzte 10 Tage", woche: "Letzte 3 Wochen", monat: "Letzte 3 Monate"};
+// Achsentexte: Schriftgröße ohne Messung (wie das CSS am Handy), geschätzte Breite je Zeichen (em; Stunden bestehen aus Ziffern, Datum und KW haben
+// breite Buchstaben), Lücke zwischen zwei Datumstexten und zwischen Stundentext und Zeichenfläche (Einheiten der viewBox).
+const GZ_SCHRIFT = 12, GZ_ZIFFER_EM = 0.5, GZ_ZEICHEN_EM = 0.6, GZ_LUECKE = 4, GZ_MONATE = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+// Kachel „Gleitzeit“ (etwa 165 px am Handy): eine Einheit je Pixel, damit die Schrift lesbar bleibt; kleinste Breite der viewBox.
+const GZ_KACHEL_SKALA = 1, GZ_KACHEL_BREITE = 150;
 // Saldo mit Vorzeichen wie woche.fmt_saldo im Server: auch 0 mit „+“ (zeitText setzt „+“ nur über 0).
 const gzSaldo = m => (m < 0 ? "" : "+") + zeitText(m);
 // Datum JJJJ-MM-TT als „TT.MM.“ (maskiert).
@@ -1947,85 +2144,150 @@ function gzKwMarken(jahr) {
   d.setDate(d.getDate() - (d.getDay() + 6) % 7);
   for (; d.getFullYear() <= jahr; d.setDate(d.getDate() + 7)) {
     const [kj, kw] = kwJahr(d);
-    if (kj === jahr && (kw - 1) % GZ_KW_SCHRITT === 0) marken.push({kw, datum: datumZuIso(d < neujahr ? neujahr : d), grob: (kw - 1) % GZ_KW_GROB === 0});
+    if (kj === jahr && (kw - 1) % GZ_KW_SCHRITT === 0) marken.push({kw, text: `KW ${kw}`, erste: kw === 1, datum: datumZuIso(d < neujahr ? neujahr : d), grob: (kw - 1) % GZ_KW_GROB === 0});
   }
   return marken;
 }
+// Zeitraum [von, bis] (JJJJ-MM-TT) der Karte einer Seite für den gezeigten Tag d: tag die letzten 10 Tage bis d, woche Montag vor 2 Wochen bis Sonntag der Woche
+// von d, monat der 1. vor 2 Monaten bis Ende des Monats von d; bis höchstens heute (liegt der Zeitraum ganz nach heute, ist bis kleiner als von).
+function gzZeitraum(art, d, heute) {
+  const t = isoZuDatum(d);
+  let von = new Date(t), bis = new Date(t);
+  if (art === "tag") von.setDate(von.getDate() - GZ_TAGE_ZURUECK);
+  else if (art === "woche") { von.setDate(von.getDate() - (von.getDay() + 6) % 7 - 7 * GZ_WOCHEN_ZURUECK); bis = new Date(von); bis.setDate(bis.getDate() + 7 * (GZ_WOCHEN_ZURUECK + 1) - 1); }
+  else { von = new Date(t.getFullYear(), t.getMonth() - GZ_MONATE_ZURUECK, 1, 12); bis = new Date(t.getFullYear(), t.getMonth() + 1, 0, 12); }
+  const b = datumZuIso(bis);
+  return [datumZuIso(von), b < heute ? b : heute];
+}
+// Marken der Achse eines Zeitraums: tag jeder Tag („TT.MM.“), woche jeder Montag („KW n“), monat jeder Monatserste („Sep“); alle grob (auch am Handy).
+function gzZeitraumMarken(art, von, bis) {
+  const d = isoZuDatum(von), ende = isoZuDatum(bis), marken = [];
+  for (; d <= ende; d.setDate(d.getDate() + 1)) {
+    const iso = datumZuIso(d), text = art === "tag" ? gzTag(iso) : art === "woche" && d.getDay() === 1 ? `KW ${kwJahr(d)[1]}` : art === "monat" && d.getDate() === 1 ? GZ_MONATE[d.getMonth()] : "";
+    if (text) marken.push({text, datum: iso, grob: true});
+  }
+  return marken;
+}
+// Art der Antwort: „jahr“ ohne Angabe (GET /gleitzeit/verlauf/<J>), sonst tag, woche oder monat.
+const gzArt = v => Object.hasOwn(GZ_ZEITRAUM_TEXT, v?.art) ? v.art : "jahr";
+// Erster und letzter Tag der Achse: von/bis der Antwort, beim Jahr ohne Angabe 01.01. bis 31.12.
+const gzGrenzen = v => [String(v.von || `${Number(v.jahr)}-01-01`), String(v.bis || `${Number(v.jahr)}-12-31`)];
 // Stunden als Achsentext mit echtem Minus, z. B. „−20 h“.
 const gzStunden = h => `${h < 0 ? "−" : ""}${Math.abs(h)} h`;
+// Geschätzte Breite eines Achsentexts bei der Schrift schrift (Einheiten der viewBox); em: Breite je Zeichen.
+const gzTextBreite = (text, schrift, em = GZ_ZEICHEN_EM) => text.length * em * schrift;
+// Ausrichtung eines Achsentexts bei x: am linken und rechten Rand nach innen, sonst mittig.
+const gzAnker = (x, links, breite) => x < links + GZ_KW_RAND ? "start" : x > breite - GZ_KW_RAND ? "end" : "middle";
 // Punkte der Antwort als {datum, m} (nur Text und Zahl gehen weiter).
 const gzPunkte = v => v.punkte.map(p => ({datum: String(p.datum), m: Number(p.saldo_min) || 0}));
-// Bild des Gleitzeit-Verlaufs (SVG, aria-hidden) aus der Antwort mit mindestens einem Punkt: Linie des Kontos über das Jahr, Nulllinie, Stunden- und KW-Achse
+// Bild des Gleitzeit-Verlaufs (SVG, aria-hidden) aus der Antwort mit mindestens einem Punkt: Linie des Kontos über das Jahr bzw. den Zeitraum (von/bis),
+// Nulllinie, Stundenachse und Achse der Zeit (Jahr: KW-Marken; Zeitraum: gzZeitraumMarken, nur Texte, die nicht an den vorigen stoßen)
 // mit Hilfslinien, beide Grenzen gestrichelt mit Text (Grenze 0 = kein Hinweis: keine Linie). breite: Breite der viewBox (gzBildBreite); breiter als GZ_BREITE
-// heißt eingepasst (Klasse GZ_EINGEPASST, ohne die 480-px-Grenze des Grundbilds).
+// heißt eingepasst (Klasse GZ_EINGEPASST, ohne die 480-px-Grenze des Grundbilds). schrift: echte Schriftgröße der Achse (gzEinpassen misst sie);
+// der Rand links fasst die Stundentexte, damit sie bei großer Schrift nicht aus Karte oder Kachel ragen.
 // Im Bild stehen nur Zahlen (Number) und Texte aus zeitText; Daten aus der Antwort gehen sonst nur maskiert hinein.
-function gzBildSvg(v, breite) {
-  const jahr = Number(v.jahr), punkte = gzPunkte(v), letzt = punkte.at(-1);
+function gzBildSvg(v, breite, schrift = GZ_SCHRIFT) {
+  const art = gzArt(v), [von, bis] = gzGrenzen(v), punkte = gzPunkte(v), letzt = punkte.at(-1);
   const plus = Number(v.plus_min) || 0, minus = -(Number(v.minus_min) || 0), werte = punkte.map(p => p.m);
   const stufen = gzStufen(Math.min(...werte, minus, 0), Math.max(...werte, plus, 0)), {oben, unten} = stufen, spanne = oben - unten;
-  const anfang = Date.UTC(jahr, 0, 1), dauer = Date.UTC(jahr + 1, 0, 1) - anfang, flaeche = breite - GZ_LINKS;
-  const xZahl = d => GZ_LINKS + ((Date.parse(d) - anfang) / dauer * flaeche || 0), x = d => xZahl(d).toFixed(1);
+  const links = Math.max(GZ_LINKS, Math.ceil(Math.max(...stufen.werte.map(h => gzTextBreite(gzStunden(h), schrift, GZ_ZIFFER_EM))) + GZ_LUECKE));
+  const anfang = Date.parse(von), dauer = Date.parse(bis) + GZ_TAG_MS - anfang, flaeche = breite - links;
+  const xZahl = d => links + ((Date.parse(d) - anfang) / dauer * flaeche || 0), x = d => xZahl(d).toFixed(1);
   const y = m => (GZ_OBEN + (oben - m) / spanne * (GZ_HOEHE - GZ_OBEN - GZ_UNTEN)).toFixed(1);
-  const linie = (m, klasse, strich = "") => `<line class="${klasse}" x1="${GZ_LINKS}" x2="${breite}" y1="${y(m)}" y2="${y(m)}"${strich ? ` stroke-dasharray="${strich}"` : ""}/>`;
+  const linie = (m, klasse, strich = "") => `<line class="${klasse}" x1="${links}" x2="${breite}" y1="${y(m)}" y2="${y(m)}"${strich ? ` stroke-dasharray="${strich}"` : ""}/>`;
   // Stundenachse: dezente Linie je Stufe (0 ist die Nulllinie), Text rechtsbündig im Rand links
   const stunden = stufen.werte.map(h => (h ? linie(h * MIN_JE_STUNDE, "raster") : "") +
-    `<text class="stunde" x="${GZ_LINKS - 4}" y="${y(h * MIN_JE_STUNDE)}" text-anchor="end" dominant-baseline="middle">${gzStunden(h)}</text>`).join("");
+    `<text class="stunde" x="${links - GZ_LUECKE}" y="${y(h * MIN_JE_STUNDE)}" text-anchor="end" dominant-baseline="middle">${gzStunden(h)}</text>`).join("");
   // KW-Achse: senkrechte Linie je Marke, Text darunter, versetzt in zwei Zeilen (grobe oben, feine darunter): je Zeile 10 KW Abstand, so stoßen
   // die Texte auch bei großer Schrift nicht aneinander; am Handy fehlen die feinen (CSS). Am linken und rechten Rand nach innen ausgerichtet.
-  const kwText = m => { const xm = xZahl(m.datum).toFixed(1), anker = xm < GZ_LINKS + GZ_KW_RAND ? "start" : xm > breite - GZ_KW_RAND ? "end" : "middle";
+  const kwText = m => { const xm = xZahl(m.datum).toFixed(1), anker = gzAnker(xZahl(m.datum), links, breite);
     const zeile = GZ_HOEHE - GZ_UNTEN + GZ_KW_ZEILE * (m.grob ? 1 : 2);
-    return `<g class="kw${m.grob ? " grob" : ""}"><line x1="${xm}" x2="${xm}" y1="${GZ_OBEN}" y2="${GZ_HOEHE - GZ_UNTEN}"/><text x="${xm}" y="${zeile}" text-anchor="${anker}">KW ${Number(m.kw)}</text></g>`; };
-  const kw = gzKwMarken(jahr).map(kwText).join("");
+    return `<g class="kw${m.grob ? " grob" : ""}${m.erste ? " erste" : ""}"><line x1="${xm}" x2="${xm}" y1="${GZ_OBEN}" y2="${GZ_HOEHE - GZ_UNTEN}"/><text x="${xm}" y="${zeile}" text-anchor="${anker}">${esc(m.text)}</text></g>`; };
+  // Zeitraum: jede n-te Marke mit dem kleinsten n, bei dem jeder Text mit Lücke hinter dem vorigen beginnt; gerechnet mit der Lage nach dem Anker
+  // (der erste Text reicht nach rechts). Gleicher Schritt, damit die Achse gleichmäßig bleibt.
+  const bereich = m => { const xm = xZahl(m.datum), w = gzTextBreite(m.text, schrift), anker = gzAnker(xm, links, breite);
+    const l = anker === "start" ? xm : anker === "end" ? xm - w : xm - w / 2;
+    return [l, l + w]; };
+  const passt = ms => ms.map(bereich).every(([l], i, b) => !i || l > b[i - 1][1] + GZ_LUECKE);
+  const alle = art === "jahr" ? gzKwMarken(Number(v.jahr)) : gzZeitraumMarken(art, von, bis);
+  let marken = alle;
+  if (art !== "jahr") for (let n = 2; marken.length > 1 && !passt(marken); n++) marken = alle.filter((_, i) => i % n === 0);
+  const kw = marken.map(kwText).join("");
   const grenze = (m, text) => !m ? "" : `${linie(m, "grenze", GZ_STRICH)}<text class="grenze-text" x="${breite}" y="${(y(m) - 4).toFixed(1)}" text-anchor="end">${esc(text)}</text>`;
-  return `<svg class="gz-verlauf${breite > GZ_BREITE ? " " + GZ_EINGEPASST : ""}" viewBox="0 0 ${breite} ${GZ_HOEHE}" aria-hidden="true" focusable="false">${kw}${stunden}${linie(0, "null")}${grenze(plus, "Grenze " + gzSaldo(plus))}${grenze(minus, "Grenze " + zeitText(minus))}
+  return `<svg class="gz-verlauf${breite !== GZ_BREITE ? " " + GZ_EINGEPASST : ""}" viewBox="0 0 ${breite} ${GZ_HOEHE}" data-gz="${esc(gzSchluessel(v))}" data-schrift="${Number(schrift)}" aria-hidden="true" focusable="false">${kw}${stunden}${linie(0, "null")}${grenze(plus, "Grenze " + gzSaldo(plus))}${grenze(minus, "Grenze " + zeitText(minus))}
     <polyline class="linie" points="${punkte.map(p => `${x(p.datum)},${y(p.m)}`).join(" ")}"/><circle class="heute" cx="${x(letzt.datum)}" cy="${y(letzt.m)}" r="${GZ_PUNKT_R}"/></svg>`;
 }
-// Karte „Gleitzeit-Verlauf <Jahr>“ (funktionen.md 11, U11) aus GET /gleitzeit/verlauf/<J>: Bild (gzBildSvg), darunter die Kappungen des Jahres („gekappt am …“).
-// Der Screenreader hört statt des Bilds einen Satz mit Stand, höchstem und niedrigstem Stand; darunter die Werte als Tabelle. Ohne Punkte: Leerzustand.
-// breite: Breite der viewBox; die Seite passt sie nach dem Einfügen an die echte Breite an (gzVerlaufEinpassen).
-function gleitzeitVerlaufHtml(v, breite = GZ_BREITE) {
-  const jahr = Number(v.jahr), kopf = `<h2 id="gz-verlauf-titel">Gleitzeit-Verlauf ${jahr}</h2>`;
-  if (!v.punkte.length) return `<div class="card"${md("gleitzeit")}>${kopf}<p class="leer">Noch keine Werte in ${jahr}.</p></div>`;
-  const punkte = gzPunkte(v), letzt = punkte.at(-1);
+// Schlüssel eines Verlaufs (Art und Zeitraum): gzVerlaufEinpassen passt nur das Bild an, das zur zuletzt geholten Antwort gehört.
+const gzSchluessel = v => `${gzArt(v)}/${gzGrenzen(v).join("/")}`;
+// Satz für den Screenreader statt des Bilds: Stand, höchster und niedrigster Stand mit Datum (Jahr: „Gleitzeit-Konto 2026“, Zeitraum: „vom … bis …“).
+function gzSatz(v) {
+  const punkte = gzPunkte(v), letzt = punkte.at(-1), [von, bis] = gzGrenzen(v);
   const hoch = punkte.reduce((a, p) => p.m > a.m ? p : a), tief = punkte.reduce((a, p) => p.m < a.m ? p : a);
-  const satz = `Gleitzeit-Konto ${jahr}: Stand ${gzSaldo(letzt.m)}, höchster Stand ${gzSaldo(hoch.m)} am ${esc(gzDatum(hoch.datum))}, niedrigster Stand ${gzSaldo(tief.m)} am ${esc(gzDatum(tief.datum))}.`;
-  const zeilen = punkte.map(p => `<tr><td>${gzWoche(p.datum)}</td><td>${gzSaldo(p.m)}</td></tr>`).join("");
+  const name = gzArt(v) === "jahr" ? `Gleitzeit-Konto ${Number(v.jahr)}` : `Gleitzeit-Konto vom ${esc(gzDatum(von))} bis ${esc(gzDatum(bis))}`;
+  return `${name}: Stand ${gzSaldo(letzt.m)}, höchster Stand ${gzSaldo(hoch.m)} am ${esc(gzDatum(hoch.datum))}, niedrigster Stand ${gzSaldo(tief.m)} am ${esc(gzDatum(tief.datum))}.`;
+}
+// Karte „Gleitzeit-Verlauf“ (funktionen.md 11, U11): Jahr aus GET /gleitzeit/verlauf/<J> mit Jahr im Titel, Zeitraum (v.art tag/woche/monat) mit Zeile
+// „Letzte 10 Tage: … bis …“. Bild (gzBildSvg), darunter die Kappungen („gekappt am …“). Der Screenreader hört statt des Bilds gzSatz; darunter die Werte
+// als Tabelle (Jahr je Woche, Zeitraum je Tag). Ohne Punkte: Leerzustand. breite: Breite der viewBox; die Seite passt sie nach dem Einfügen an (gzVerlaufEinpassen).
+function gleitzeitVerlaufHtml(v, breite = GZ_BREITE) {
+  const art = gzArt(v), jahr = Number(v.jahr), [von, bis] = gzGrenzen(v);
+  const zeitraum = art === "jahr" ? "" : `<p class="hinweis">${GZ_ZEITRAUM_TEXT[art]}: ${esc(gzDatum(von))} bis ${esc(gzDatum(bis))}</p>`;
+  const kopf = `<h2 id="gz-verlauf-titel">Gleitzeit-Verlauf${art === "jahr" ? ` ${jahr}` : ""}</h2>${zeitraum}`;
+  if (!v.punkte?.length) return `<div class="card"${md("gleitzeit")}>${kopf}${leerHtml(art === "jahr" ? `Noch keine Werte in ${jahr}.` : "Noch keine Werte in diesem Zeitraum.", "p")}</div>`;
+  const zeilen = gzPunkte(v).map(p => `<tr><td>${art === "jahr" ? gzWoche(p.datum) : esc(gzDatum(p.datum))}</td><td>${gzSaldo(p.m)}</td></tr>`).join("");
   const kappung = (v.kappungen || []).map(k => `<p class="hinweis kappung">${esc(k.text)}</p>`).join("");   // Sprung im Bild: Stand vor und nach der Kappung am selben Tag
-  return `<div class="card"${md("gleitzeit")}>${kopf}${gzBildSvg(v, breite)}<p class="sr">${satz}</p>${kappung}
-    <details class="auf"><summary>Werte als Tabelle</summary><table class="tbl gz-tabelle"><thead><tr><th>Woche</th><th>Stand</th></tr></thead><tbody>${zeilen}</tbody></table></details></div>`;
+  return `<div class="card"${md("gleitzeit")}>${kopf}${gzBildSvg(v, breite)}<p class="sr">${gzSatz(v)}</p>${kappung}
+    <details class="auf"><summary>Werte als Tabelle</summary><table class="tbl gz-tabelle"><thead><tr><th>${art === "jahr" ? "Woche" : "Tag"}</th><th>Stand</th></tr></thead><tbody>${zeilen}</tbody></table></details></div>`;
+}
+// Bild der Kachel „Gleitzeit“ der Übersicht (Wunsch 25.11.2026: genau der Verlauf der Karte der Seite Woche, die letzten 3 Wochen): [SVG, Satz für den
+// Screenreader]; ohne Punkte ["", ""]. Merkt sich die Antwort für gzVerlaufEinpassen (die Kachel passt ihr Bild wie die Karte an ihre Breite an).
+function gzKachelBild(v) {
+  if (!v?.punkte?.length) return ["", ""];
+  gzZuletzt = v;
+  return [gzBildSvg(v, GZ_BREITE), gzSatz(v)];
 }
 // Breite der viewBox für ein Bild von px Pixeln: so, dass eine Einheit höchstens GZ_SKALA px wird (wie die schmale Fassung, 360 Einheiten auf 480 px).
-// Breite Karten bekommen so mehr Einheiten statt größerer Schrift; die KW-Marken rücken auseinander, nie zusammen. Nie unter GZ_BREITE.
-const gzBildBreite = px => Math.max(GZ_BREITE, Math.round((Number(px) || 0) / GZ_SKALA));
+// Breite Karten bekommen so mehr Einheiten statt größerer Schrift; die KW-Marken rücken auseinander, nie zusammen. Nie unter min (Karte GZ_BREITE,
+// Kachel GZ_KACHEL_BREITE mit GZ_KACHEL_SKALA).
+const gzBildBreite = (px, min = GZ_BREITE, skala = GZ_SKALA) => Math.max(min, Math.round((Number(px) || 0) / skala));
 // Klasse des eingepassten Bilds; Beobachter der Kartengröße und die zuletzt geholte Antwort (für das Einpassen nach dem Einfügen).
 const GZ_EINGEPASST = "eingepasst";
 let gzBeobachter = null, gzZuletzt = null;
-// Zeichnet das Bild in der Karte neu, wenn seine echte Breite (ohne die Grenze des Grundbilds gemessen) eine andere viewBox verlangt.
-// Nur solange die Karte im Dokument hängt.
+// Echte Schriftgröße der Stundentexte im Bild (Einheiten der viewBox; folgt der Schriftgröße des Geräts), ohne Text GZ_SCHRIFT.
+const gzSchrift = svg => parseFloat(getComputedStyle(svg.querySelector("text.stunde") ?? svg).fontSize) || GZ_SCHRIFT;
+// Zeichnet das Bild in der Karte (bzw. im Verlauf .mv der Kachel) neu, wenn seine echte Breite (ohne die Grenze des Grundbilds gemessen) eine andere
+// viewBox verlangt oder die Schrift des Geräts eine andere Größe hat (Rand links, Abstand der Datumstexte). Nur solange die Karte im Dokument hängt.
 function gzEinpassen(karte, v) {
   const svg = karte.querySelector("svg.gz-verlauf");
   if (!svg || !karte.isConnected) return;
   svg.classList.add(GZ_EINGEPASST);
-  const breite = gzBildBreite(svg.getBoundingClientRect().width);
-  if (breite !== svg.viewBox.baseVal.width) svg.outerHTML = gzBildSvg(v, breite);
+  const px = svg.getBoundingClientRect().width, breite = karte.classList?.contains("mv") ? gzBildBreite(px, GZ_KACHEL_BREITE, GZ_KACHEL_SKALA) : gzBildBreite(px);
+  const schrift = gzSchrift(svg);
+  if (breite !== svg.viewBox.baseVal.width || schrift !== Number(svg.dataset.schrift)) svg.outerHTML = gzBildSvg(v, breite, schrift);
 }
-// window.nachher der Seiten Jahr und Woche (läuft, sobald die Seite im Dokument steht): Bild an die echte Breite anpassen, danach bei jeder Größenänderung
-// der Karte (Fenster, Spalte daneben) erneut, im nächsten Bild, damit das Neuzeichnen nicht in den Beobachter zurückläuft. Gemessen wird erst im Dokument,
-// weil die Breite vom Aufbau der Seite abhängt (Woche mit Tag daneben, Jahr voll). Gehört die Karte zu einem anderen Jahr (Seite gewechselt), nichts.
+// window.nachher der Seiten Tag, Woche, Monat, Jahr und der Übersicht (läuft, sobald die Seite im Dokument steht): Bild an die echte Breite anpassen, danach
+// bei jeder Größenänderung der Karte (Fenster, Spalte daneben) erneut, im nächsten Bild, damit das Neuzeichnen nicht in den Beobachter zurückläuft. Gemessen
+// wird erst im Dokument, weil die Breite vom Aufbau der Seite abhängt. Gehört das Bild zu einer anderen Antwort (Seite gewechselt), nichts.
 function gzVerlaufEinpassen() {
   gzBeobachter?.disconnect();
-  const v = gzZuletzt, titel = document.querySelector("#gz-verlauf-titel"), karte = titel?.parentElement;
-  if (!v?.punkte?.length || !karte || titel.textContent !== `Gleitzeit-Verlauf ${Number(v.jahr)}`) return;
+  const v = gzZuletzt, svg = document.querySelector("svg.gz-verlauf"), karte = svg?.parentElement;
+  if (!v?.punkte?.length || !karte || svg.dataset.gz !== gzSchluessel(v)) return;
   gzEinpassen(karte, v);
   gzBeobachter = new ResizeObserver(() => requestAnimationFrame(() => gzEinpassen(karte, v)));
   gzBeobachter.observe(karte);
 }
-// Holt den Gleitzeit-Verlauf des Jahres; ohne Modul Gleitzeit oder bei einem Fehler keine Karte (die Woche zeigt sich trotzdem).
-// Die Antwort bleibt für gzVerlaufEinpassen stehen.
-async function gleitzeitVerlauf(jahrText) {
+// Holt den Gleitzeit-Verlauf: art „jahr“ das Jahr d (GET /gleitzeit/verlauf/<J>), sonst den Zeitraum gzZeitraum(art, d) bis höchstens heute; liegt er ganz
+// nach heute, ohne Anfrage leer. Ohne Modul Gleitzeit oder bei einem Fehler keine Karte (die Seite zeigt sich trotzdem). Die Antwort bleibt für
+// gzVerlaufEinpassen stehen. roh: die Antwort (Kachel „Gleitzeit“) statt der Karte, ohne Modul oder bei einem Fehler null.
+async function gleitzeitVerlauf(art, d, roh = false) {
   gzZuletzt = null;
-  if (!modulAn("gleitzeit")) return "";
-  try { gzZuletzt = await api("GET", `/gleitzeit/verlauf/${jahrText}`); return gleitzeitVerlaufHtml(gzZuletzt); } catch (e) { return ""; }
+  if (!modulAn("gleitzeit")) return roh ? null : "";
+  const [von, bis] = art === "jahr" ? [] : gzZeitraum(art, d, zeitHeuteIso());
+  try {
+    const v = art === "jahr" ? await api("GET", `/gleitzeit/verlauf/${d}`) : bis < von ? {von, bis, punkte: []} : await api("GET", `/gleitzeit/verlauf?von=${von}&bis=${bis}`);
+    gzZuletzt = art === "jahr" ? v : {...v, art};
+    return roh ? gzZuletzt : gleitzeitVerlaufHtml(gzZuletzt);
+  } catch (e) { return roh ? null : ""; }
 }
 // Ziel der Kachel „Gleitzeit“ der Übersicht (Wunsch vom 23.11.2026): die Woche von heute, gleich bei der Karte „Gleitzeit-Verlauf“.
 const WOCHE_GLEITZEIT = "woche/gleitzeit";
@@ -2036,75 +2298,6 @@ function wocheGleitzeitZeigen(d) {
   ueberschriftZeigen($("#gz-verlauf-titel"));
 }
 
-// ---- Kleine Verläufe der Übersicht (Kacheln Heute, Diese Woche, Gleitzeit; Entscheidung des Entwicklers 24.11.2026)
-// Kein viewBox wie die große Karte: Die Kacheln sind am Handy nur etwa 165 px breit, ein skaliertes Bild machte die Schrift dort unlesbar klein.
-// Darum x in Prozent, y in px (Schrift bleibt echte Pixel); nur die Konto-Linie liegt in einem inneren, gedehnten SVG.
-// Maße in px: Höhe gesamt, Rand oben, Höhe der Datumszeile unten, Abstand der Texte; Säulen füllen ihren Platz zu diesem Anteil; Datumstexte mindestens
-// so weit auseinander (Prozent der Breite; reicht für „TT.MM.“ auch in der schmalsten Kachel mit voller Achse); Breite der inneren Linie.
-const GZ_MINI_HOEHE = 92, GZ_MINI_OBEN = 6, GZ_MINI_ACHSE = 18, GZ_MINI_TEXT_ABSTAND = 4, GZ_MINI_SAEULE = 0.7, GZ_MINI_MARKEN_ABSTAND = 27, GZ_MINI_LINIE_BREITE = 1000;
-// Höchstens 3 Abschnitte der Stundenachse: auf 68 px Zeichenhöhe bleiben die Marken so gut 20 px auseinander (Prüfbefund 24.11.2026).
-const GZ_MINI_ABSCHNITTE = 3;
-const GZ_MINI_MIN_PUNKTE = {tag: 1, woche: 1, jahr: 2};
-const GZ_MINI_NAME = {tag: "Tagessaldo", woche: "Wochensaldo", jahr: "Gleitzeit-Konto"};
-// Punkte der Antwort als {datum, kw, m}; nur Texte und Zahlen gehen weiter.
-const gzMiniPunkte = punkte => (Array.isArray(punkte) ? punkte : []).map(p => ({datum: String(p?.datum ?? ""), kw: Number(p?.kw) || 0, m: Number(p?.saldo_min) || 0}));
-// Text eines Punkts auf der x-Achse (maskiert): Woche „KW n“, sonst „TT.MM.“.
-const gzMiniMarke = (p, art) => art === "woche" ? `KW ${p.kw}` : gzTag(p.datum);
-// Text der x-Achse an der Stelle x (Prozent); am Rand nach innen ausgerichtet, damit er nicht aus der Kachel ragt.
-function gzMiniXText(text, x, klasse) {
-  const anker = x <= 0 ? "start" : x >= 100 ? "end" : "middle";
-  return `<text class="x ${klasse}" x="${x.toFixed(1)}%" y="${GZ_MINI_HOEHE - GZ_MINI_TEXT_ABSTAND}" text-anchor="${anker}">${text}</text>`;
-}
-// Stundenachse (nur Computer, CSS): Hilfslinie je Stufe, Text links neben dem Bild (dort hat das Bild per CSS einen Rand).
-const gzMiniStunden = (stufen, y) => stufen.werte.map(h => (h ? `<line class="hilfslinie" x1="0" x2="100%" y1="${y(h * MIN_JE_STUNDE)}" y2="${y(h * MIN_JE_STUNDE)}"/>` : "") +
-  `<text class="stunde" x="-${GZ_MINI_TEXT_ABSTAND}" y="${y(h * MIN_JE_STUNDE)}" text-anchor="end" dominant-baseline="middle">${gzStunden(h)}</text>`).join("");
-// Säule je Punkt (Tag oder Woche): Plus über, Minus unter der Nulllinie; x-Achse voll (Texte mindestens GZ_MINI_MARKEN_ABSTAND auseinander) und nur Anfang/Ende.
-// Klasse „saeule“, nicht „balken“: die Regel .balken der Seite Jahr setzt eine CSS-Höhe, die das SVG-Attribut schlägt.
-function gzMiniBalken(punkte, art, y) {
-  const platz = 100 / punkte.length, breite = platz * GZ_MINI_SAEULE, mitte = i => (i + 0.5) * platz, letzt = punkte.length - 1;
-  const saeulen = punkte.map((p, i) => { const oben = y(Math.max(p.m, 0)), unten = y(Math.min(p.m, 0));
-    return `<rect class="saeule ${p.m < 0 ? "minus" : "plus"}" x="${(mitte(i) - breite / 2).toFixed(2)}%" y="${oben}" width="${breite.toFixed(2)}%" height="${(unten - oben).toFixed(1)}"/>`; }).join("");
-  const jede = Math.ceil(GZ_MINI_MARKEN_ABSTAND / platz), stelle = i => i === 0 ? 0 : i === letzt ? 100 : mitte(i);   // erste und letzte Marke bündig am Rand
-  // die letzte Marke steht immer; eine reguläre zu nah davor fiele in sie hinein („KW 47KW 48“)
-  const marke = i => i === letzt || (i % jede === 0 && letzt - i >= jede);
-  const voll = punkte.map((p, i) => marke(i) ? gzMiniXText(gzMiniMarke(p, art), stelle(i), "voll") : "").join("");
-  const enden = gzMiniXText(gzMiniMarke(punkte[0], art), 0, "rand") + (letzt ? gzMiniXText(gzMiniMarke(punkte[letzt], art), 100, "rand") : "");
-  return saeulen + voll + enden;
-}
-// Konto-Linie über das Jahr des ersten Punkts (x nach Datum wie die große Karte), Punkt am letzten Stand, Grenzen gestrichelt (0 = keine);
-// x-Achse voll mit den groben KW-Marken (alle 10 KW), sonst Anfang und Ende der Jahresachse (01.01., 31.12.), nicht erster und letzter Punkt: die Linie
-// beginnt sonst z. B. im September an einer Stelle, unter der „01.01.“ stehen müsste.
-function gzMiniLinie(punkte, y, plus, minus) {
-  const jahr = Number(punkte[0].datum.slice(0, 4)), anfang = Date.UTC(jahr, 0, 1), dauer = Date.UTC(jahr + 1, 0, 1) - anfang, letzt = punkte.at(-1);
-  const anteil = d => Math.min(Math.max((Date.parse(d) - anfang) / dauer || 0, 0), 1), x = d => (anteil(d) * GZ_MINI_LINIE_BREITE).toFixed(1);
-  const grenze = m => m ? `<line class="grenze" x1="0" x2="100%" y1="${y(m)}" y2="${y(m)}" stroke-dasharray="${GZ_STRICH}"/>` : "";
-  const fest = 'vector-effect="non-scaling-stroke"';
-  const linie = `<svg x="0" y="0" width="100%" height="${GZ_MINI_HOEHE}" viewBox="0 0 ${GZ_MINI_LINIE_BREITE} ${GZ_MINI_HOEHE}" preserveAspectRatio="none" overflow="visible">`
-    + `<polyline class="linie" ${fest} points="${punkte.map(p => `${x(p.datum)},${y(p.m)}`).join(" ")}"/><path class="heute" ${fest} d="M${x(letzt.datum)} ${y(letzt.m)}h0"/></svg>`;
-  const voll = gzKwMarken(jahr).filter(k => k.grob).map(k => gzMiniXText(`KW ${Number(k.kw)}`, anteil(k.datum) * 100, "voll")).join("");
-  return grenze(plus) + grenze(minus) + linie + voll + gzMiniXText(gzTag(`${jahr}-01-01`), 0, "rand") + gzMiniXText(gzTag(`${jahr}-12-31`), 100, "rand");
-}
-// Kleiner Verlauf als SVG-Text (aria-hidden), Schnittstelle S4. Eingaben: punkte [{datum, kw, saldo_min}] (Live-Wert: Aufrufer ersetzt saldo_min des letzten Punkts),
-// opt {art: "tag"|"woche"|"jahr", grenzePlus, grenzeMinus} (Grenzen in Minuten, Vorzeichen egal, 0/null = keine; nur bei „jahr“).
-// tag/woche: Balken je Punkt mit Nulllinie, jahr: Konto-Linie mit Grenzen. Rückgabe "" bei unbekannter Art oder unter 1 Punkt (Balken) bzw. 2 Punkten (Linie).
-// Ins SVG kommen nur Zahlen und maskierte Texte. Achsen: Computer voll, Handy nur Anfang/Ende (gleitzeit_verlauf.css).
-function miniVerlaufSvg(punkte, opt = {}) {
-  const art = opt?.art, liste = gzMiniPunkte(punkte);
-  if (!Object.hasOwn(GZ_MINI_MIN_PUNKTE, art) || liste.length < GZ_MINI_MIN_PUNKTE[art]) return "";
-  const linie = art === "jahr", plus = linie ? Math.abs(Number(opt.grenzePlus) || 0) : 0, minus = linie ? -Math.abs(Number(opt.grenzeMinus) || 0) : 0;
-  const werte = liste.map(p => p.m), stufen = gzStufen(Math.min(...werte, minus, 0), Math.max(...werte, plus, 0), GZ_MINI_ABSCHNITTE);
-  const hoehe = GZ_MINI_HOEHE - GZ_MINI_OBEN - GZ_MINI_ACHSE, y = m => (GZ_MINI_OBEN + (stufen.oben - m) / (stufen.oben - stufen.unten) * hoehe).toFixed(1);
-  const inhalt = linie ? gzMiniLinie(liste, y, plus, minus) : gzMiniBalken(liste, art, y);
-  return `<svg class="gz-mini gz-mini-${art}" height="${GZ_MINI_HOEHE}" aria-hidden="true" focusable="false">${gzMiniStunden(stufen, y)}`
-    + `<line class="null" x1="0" x2="100%" y1="${y(0)}" y2="${y(0)}"/>${inhalt}</svg>`;
-}
-// Satz für den Screenreader zum kleinen Verlauf (maskiert): Zeitraum, letzter, höchster und niedrigster Wert; ohne Punkte oder bei unbekannter Art "".
-function miniVerlaufText(punkte, art) {
-  const liste = gzMiniPunkte(punkte), name = Object.hasOwn(GZ_MINI_NAME, art) ? GZ_MINI_NAME[art] : "";
-  if (!liste.length || !name) return "";
-  const hoch = liste.reduce((a, p) => p.m > a.m ? p : a), tief = liste.reduce((a, p) => p.m < a.m ? p : a), marke = p => gzMiniMarke(p, art);
-  return `${name} von ${marke(liste[0])} bis ${marke(liste.at(-1))}: zuletzt ${gzSaldo(liste.at(-1).m)}, höchster Wert ${gzSaldo(hoch.m)} (${marke(hoch)}), niedrigster Wert ${gzSaldo(tief.m)} (${marke(tief)}).`;
-}
 // ---- bausteine/kennzahl.js ----
 "use strict";
 // Zeiterfassung. © 2026 David Saluda. Alle Rechte vorbehalten. Erstellt mit Unterstützung von KI (Claude, Anthropic).
@@ -2120,6 +2313,63 @@ function kachelKopf(titel, ziel, id = "") {
 function kachel(titel, wert, sub, ziel, klasse = "", modul = "", verlauf = "") {
   const id = "k" + (++kNr);
   return `<div class="card kachel klickbar ${klasse}"${modul && md(modul)}>${kachelKopf(titel, ziel, id)}<b id="${id}-w">${wert}</b><small id="${id}-z">${sub}</small>${verlauf}</div>`;
+}
+// ---- bausteine/quote_ampel.js ----
+"use strict";
+// Zeiterfassung. © 2026 David Saluda. Alle Rechte vorbehalten. Erstellt mit Unterstützung von KI (Claude, Anthropic).
+// Quote-Ampel (A6): wie viel Büro-Zeit im laufenden Monat noch nötig ist, damit die HO-Quote am Monatsende die Grenze einhält.
+// Rechnen tut nur der Dienst (GET /api/quote/ampel, bericht.quote_ampel); hier stehen Anzeige und Takt. Nur im Modus „mit Grenze“ und nur
+// für den laufenden Monat. Die Stufe zeigt ein Zeichen und ein Wort, nie nur die Farbe.
+const QUOTE_AMPEL_PFAD = "/quote/ampel";
+const QUOTE_AMPEL_TAKT = 60000;                  // bei laufender Uhr je Minute neu fragen: der Dienst kennt die Uhr und rechnet sie mit
+const QUOTE_AMPEL_TITEL = "Quote-Ampel";
+const QUOTE_AMPEL_ZIEL = "monat";
+const QA_SVG = inhalt => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${inhalt}</svg>`;
+// Je Stufe Zeichen (Haken im Kreis, Dreieck mit „!“, Achteck mit „×“) und Wort
+const QUOTE_AMPEL_STUFEN = {
+  gruen: {zeichen: QA_SVG('<circle cx="12" cy="12" r="9"/><path d="m8 12.5 3 3 5-6"/>'), wort: "Im Rahmen"},
+  gelb: {zeichen: QA_SVG('<path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.2v.3"/>'), wort: "Büro-Zeit nötig"},
+  rot: {zeichen: QA_SVG('<path d="M8.3 3h7.4L21 8.3v7.4L15.7 21H8.3L3 15.7V8.3z"/><path d="m9 9 6 6M15 9l-6 6"/>'), wort: "Nicht zu halten"},
+};
+
+// Antwort des Dienstes für den Monat jahr/monat oder null: nur im Modus „mit Grenze“, nur im laufenden Monat; ein Fehler lässt die Ampel weg.
+async function quoteAmpelLaden(jahr, monat) {
+  if (!mitGrenze() || jahr !== heute.getFullYear() || monat !== heute.getMonth() + 1) return null;
+  const a = await api("GET", QUOTE_AMPEL_PFAD).catch(() => null);
+  return a && QUOTE_AMPEL_STUFEN[a.stufe] ? a : null;
+}
+// Satz unter dem Wort: was bis Monatsende im Büro nötig ist (Dauern und Grenze vom Dienst, darum esc).
+function quoteAmpelSatz(a) {
+  const noetig = esc(a.noetig), grenze = esc(a.grenze);
+  if (a.stufe === "rot") return a.geplant_min ? `Auch mit Büro an allen restlichen Tagen über ${grenze} % HO` : `Über ${grenze} % HO, keine Arbeitstage mehr in diesem Monat`;
+  return a.stufe === "gelb" ? `Bis Monatsende noch ${noetig} Std. im Büro nötig` : "Keine Büro-Zeit mehr nötig";
+}
+// Zeichen und Wort der Stufe.
+const quoteAmpelWert = a => `${QUOTE_AMPEL_STUFEN[a.stufe].zeichen}<span>${QUOTE_AMPEL_STUFEN[a.stufe].wort}</span>`;
+// Ampel als Zeile (Seite Monat); leer ohne Antwort.
+function quoteAmpelHtml(a) {
+  return a ? `<div class="quote-ampel ampel-${a.stufe}"><b class="qa-wert">${quoteAmpelWert(a)}</b><small class="qa-satz">${quoteAmpelSatz(a)}</small></div>` : "";
+}
+// Ampel als Kachel der Übersicht (in „Kacheln anpassen“ wählbar, Ziel Seite Monat); leer ohne Antwort.
+function quoteKachel(a) {
+  return a ? kachel(QUOTE_AMPEL_TITEL, `<span class="qa-wert">${quoteAmpelWert(a)}</span>`, `<span class="qa-satz">${quoteAmpelSatz(a)}</span>`, QUOTE_AMPEL_ZIEL, `quote-ampel ampel-${a.stufe}`) : "";
+}
+// Takt bei laufender Uhr (seit heute; gestartet in anlauf.js): neuen Stand holen und Stufe, Wort und Satz jeder sichtbaren Ampel ersetzen, nur wenn sich etwas ändert.
+// Kein aria-live: Screenreader und Fokus bleiben in Ruhe (wie die anderen Live-Werte der Übersicht).
+async function quoteAmpelLaufend() {
+  const ampeln = document.querySelectorAll(".quote-ampel");
+  if (!ampeln.length || !stempelHeute()) return;
+  const a = await api("GET", QUOTE_AMPEL_PFAD).catch(() => null);
+  if (!a || !QUOTE_AMPEL_STUFEN[a.stufe]) return;
+  const wert = quoteAmpelWert(a), satz = quoteAmpelSatz(a);
+  ampeln.forEach(e => {
+    if (e.zuletzt === wert + satz) return;
+    e.classList.remove(...Object.keys(QUOTE_AMPEL_STUFEN).map(s => "ampel-" + s));
+    e.classList.add("ampel-" + a.stufe);
+    e.querySelector(".qa-wert").innerHTML = wert;
+    e.querySelector(".qa-satz").innerHTML = satz;
+    e.zuletzt = wert + satz;
+  });
 }
 // ---- bausteine/reiter.js ----
 "use strict";
@@ -2299,42 +2549,68 @@ function schnellEintrag(art, z) {
   return {ho: art === "ho" ? hhmm(soll) : "", dst: art === "dst" ? hhmm(soll) : "", art: ort ? "" : (art === "krank" && z.attest ? "krank_attest" : art),
     notiz: z.notiz, attest: z.attest || "", freigabe: z.freigabe || 0};
 }
-// Blöcke im Bearbeiten-Formular (Wunsch vom 24.11.2026): je Block Ort, Kommen, Gehen und Pause (leer = nach Regel). Gespeichert als „eintraege“ von PUT /tag,
+// Blöcke im Bearbeiten-Formular (Wunsch vom 24.11.2026): je Block Ort, Kommen, Gehen und Pause von Hand (leer = 0, die Pflichtpause rechnet die App). Gespeichert als „eintraege“ von PUT /tag,
 // der Dienst rechnet und prüft (stempel.bloecke); die Vorschau rechnet genauso, damit Fehler schon beim Tippen erscheinen.
 const BLOCK_ORTE = [["ho", "Homeoffice"], ["dst", "Büro"]];
 const BLOCK_ZEIT_FEHLER = "Bei jedem Block muss „Gehen“ nach „Kommen“ liegen";
 const BLOCK_NACHT_BEISPIEL = " (nach Mitternacht: z. B. 26:00).";
 const BLOCK_ENDE_AM_TAG = ", spätestens um 23:59. Über Mitternacht unter Einstellungen › Arbeitszeit erlauben.";
 const BLOCK_TAG_MIN = 1440;   // Minuten eines Tages: ab hier liegt „Gehen“ nach Mitternacht
-const BLOCK_PAUSE_FEHLER = "Die Pause ist länger als ein Block.";
-// Rechnet Blöcke [{art, kommen, gehen, pause}] wie stempel.bloecke: Pause nach Regel über die Summe der Blöcke, Lücken und eigene Pausen zählen mit,
-// der Rest geht vom letzten Block ohne eigene Pause ab. Gehen nach Mitternacht nur mit der Regel „Stempeluhr über Mitternacht erlauben“ (wie der Dienst).
-// Rückgabe {hoMin, dstMin, pause} (Pause ohne Lücken) oder {fehler}.
-function bloeckeRechnen(liste) {
-  const b = liste.map(x => ({...x, k: minuten(x.kommen), g: minuten(x.gehen), p: x.pause ? minuten(x.pause) : null})).sort((a, c) => a.k - c.k);
+const BLOCK_PAUSE_FEHLER = "Die Pause von Hand ist länger als ein Block.";
+const BLOCK_DAUER_FEHLER = "Stunden ohne Uhrzeit: 00:01 bis 23:59 (hh:mm).";
+// Rechnet Blöcke [{art, kommen, gehen, pause}] am Tag datum (ISO) wie stempel.bloecke mit der Tagesrechnung (tagRechnen; freigabe: über der Tagesgrenze
+// freigegeben). Gehen nach Mitternacht nur mit der Regel „Stempeluhr über Mitternacht erlauben“ (wie der Dienst). Stunden ohne Uhrzeit ({art, dauer})
+// zählen dazu, ohne Pausenregel. Rückgabe {hoMin, dstMin, pause, kapp} (Pause ohne Lücken, Kappzeit in Minuten) oder {fehler}.
+function bloeckeRechnen(liste, datum = "", freigabe = false) {
+  const ohne = liste.filter(x => "dauer" in x);
+  if (ohne.some(x => !(minuten(x.dauer) > 0 && minuten(x.dauer) < BLOCK_TAG_MIN))) return {fehler: BLOCK_DAUER_FEHLER};
+  const b = liste.filter(x => !("dauer" in x)).map(x => ({...x, k: minuten(x.kommen), g: minuten(x.gehen), p: x.pause ? minuten(x.pause) : 0})).sort((a, c) => a.k - c.k);
   const nachts = !!KONFIG.stempel_mitternacht, grenze = nachts ? Infinity : BLOCK_TAG_MIN;
   if (b.some(x => !x.kommen || !x.gehen || x.k >= BLOCK_TAG_MIN || x.g <= x.k || x.g >= grenze)) return {fehler: BLOCK_ZEIT_FEHLER + (nachts ? BLOCK_NACHT_BEISPIEL : BLOCK_ENDE_AM_TAG)};
   const ueber = b.findIndex((x, i) => i && x.k < b[i - 1].g);
   if (ueber > 0) { const [a, c] = [b[ueber - 1], b[ueber]]; return {fehler: `Die Blöcke ${a.kommen}–${a.gehen} und ${c.kommen}–${c.gehen} überschneiden sich.`}; }
-  const offen = b.filter(x => x.p === null), letzter = offen[offen.length - 1], summe = f => b.reduce((s, x, i) => s + f(x, i), 0);
-  const eigen = summe(x => x.p || 0), luecken = summe((x, i) => i ? x.k - b[i - 1].g : 0);
-  const rest = letzter ? Math.max(0, pauseAuto(summe(x => x.g - x.k)) - luecken - eigen) : 0;
-  b.forEach(x => { x.m = x.g - x.k - (x.p || 0) - (x === letzter ? rest : 0); });
-  if (b.some(x => x.m < 0)) return {fehler: BLOCK_PAUSE_FEHLER};
-  const ort = art => summe(x => x.art === art ? x.m : 0);
-  return {hoMin: ort("ho"), dstMin: ort("dst"), pause: eigen + rest};
+  if (b.some(x => x.p > x.g - x.k)) return {fehler: BLOCK_PAUSE_FEHLER};
+  const ohneMin = art => ohne.reduce((s, x) => s + (!art || x.art === art ? minuten(x.dauer) : 0), 0);
+  const {kapp, pause} = tagRechnen(b, ohneMin(), datum, freigabe), ort = art => b.reduce((s, x) => s + (x.art === art ? x.m : 0), 0) + ohneMin(art);
+  return {hoMin: ort("ho"), dstMin: ort("dst"), pause, kapp};
 }
-// Blöcke zum Öffnen des Formulars aus den Einträgen des Tages (GET /woche, /monat). Die gespeicherte Pause kommt ausdrücklich mit, auch 0:
-// leer hieße „nach Regel über alle Blöcke“, und unverändert gespeichert bekäme ein gestempelter Tag (Regel je Block) sonst weniger Stunden.
+// „Beides“ im Formular (h, d: Homeoffice und Büro [von, bis] in Minuten, eigen: Pause von Hand in Minuten oder null) am Tag datum, wie der Dienst es
+// speichert (routen_zeiten._kommen_gehen): eine Spanne Kommen–Gehen mit der Tagesrechnung (tagRechnen; ohne eigene Pause zählt die Lücke an), dazu der
+// HO-Anteil, Büro = Rest. Den HO-Anteil verteilt die Tagesrechnung über beide Blöcke (Kappzeit beim eigenen Block, Abzüge vom letzten rückwärts).
+// Rückgabe {kommen, gehen (hh:mm), pause, hoMin, dstMin, kapp} oder {fehler}.
+function beidesRechnen(h, d, eigen, datum = "", freigabe = false) {
+  if (h[1] <= h[0] || d[1] <= d[0]) return {fehler: "Bei jedem Block muss „bis“ nach „von“ liegen."};
+  const [erst, dann] = h[0] <= d[0] ? [h, d] : [d, h];
+  if (dann[0] < erst[1]) return {fehler: "Homeoffice und Büro überschneiden sich."};
+  const luecke = dann[0] - erst[1], hand = eigen ?? luecke;
+  if (hand < luecke) return {fehler: `Die Pause muss mindestens die Zeit zwischen den Blöcken sein (${zeitText(luecke)}).`};
+  if (hand - luecke >= dann[1] - dann[0]) return {fehler: "Die Pause ist länger als ein Block."};
+  const spanne = {k: erst[0], g: dann[1], p: hand}, {kapp, pause} = tagRechnen([spanne], 0, datum, freigabe);
+  const zwei = [{k: erst[0], g: erst[1], p: 0}, {k: dann[0], g: dann[1], p: hand - luecke}];
+  tagRechnen(zwei, 0, datum, freigabe);
+  const hoMin = Math.min(zwei[dann === h ? 1 : 0].m, spanne.m);
+  return {kommen: hhmm(spanne.k), gehen: hhmm(spanne.g), pause, hoMin, dstMin: spanne.m - hoMin, kapp};
+}
+// Blöcke zum Öffnen des Formulars aus den Einträgen des Tages (GET /woche, /monat). Mit kommt nur die Pause von Hand (hand), denn die Pflichtpause
+// rechnet die App bei jedem Speichern über den ganzen Tag neu. Ein Eintrag ohne Uhrzeit wird {art, dauer} (Dauer hh:mm, auch wenn die Seite sie dezimal zeigt).
 function bloeckeAusTag(z) {
-  return (z.eintraege || []).map(e => ({art: e.art, kommen: e.kommen, gehen: e.gehen, pause: e.pause || hhmm(0)}));
+  return (z.eintraege || []).map(e => e.kommen ? {art: e.art, kommen: e.kommen, gehen: e.gehen, pause: e.hand || ""} : {art: e.art, dauer: hhmm(dauerMinuten(e.dauer))});
 }
-// Eine Zeile der Blockliste (i ab 0): Kopf mit Ort (nur mit zwei Orten im Profil) und „Löschen“, darunter Kommen, Gehen, Pause; Werte maskiert.
-function blockZeileHtml(b, i) {
-  const ort = einOrt() ? "" : `<div><label for="e-b${i}-art">Ort</label><select id="e-b${i}-art" data-feld="art">${BLOCK_ORTE.map(([k, t]) => `<option value="${k}"${k === b.art ? " selected" : ""}>${t}</option>`).join("")}</select></div>`;
-  const feld = (f, name, platz) => `<div><label for="e-b${i}-${f}">${name}</label><input id="e-b${i}-${f}" data-feld="${f}" inputmode="numeric" placeholder="${platz}" value="${esc(b[f] || "")}"></div>`;
+// Eine Zeile der Blockliste (i ab 0, vor: Anfang der Feld-Kennungen, damit Formular und Blatt eines Eintrags nebeneinander eindeutig bleiben): Kopf mit Ort
+// (nur mit zwei Orten im Profil) und „Löschen“, darunter Kommen, Gehen, Pause oder bei Stunden ohne Uhrzeit nur die Stunden; Werte maskiert.
+function blockZeileHtml(b, i, vor = "e") {
+  const id = `${vor}-b${i}`;
+  const ort = einOrt() ? "" : `<div><label for="${id}-art">Ort</label><select id="${id}-art" data-feld="art">${BLOCK_ORTE.map(([k, t]) => `<option value="${k}"${k === b.art ? " selected" : ""}>${t}</option>`).join("")}</select></div>`;
+  const feld = (f, name, platz) => `<div><label for="${id}-${f}">${name}</label><input id="${id}-${f}" data-feld="${f}" inputmode="numeric" placeholder="${platz}" value="${esc(b[f] || "")}"></div>`;
+  const felder = "dauer" in b ? feld("dauer", "Stunden ohne Uhrzeit", "02:00") : feld("kommen", "Kommen", "07:30") + feld("gehen", "Gehen", "12:00") + feld("pause", "Pause", "Regel");
   return `<div class="e-block" role="group" aria-label="Block ${i + 1}"><div class="e-kopf">${ort}<button type="button" class="leise" data-weg="${i}" aria-label="Block ${i + 1} löschen">Löschen</button></div>
-    <div class="reihe">${feld("kommen", "Kommen", "07:30")}${feld("gehen", "Gehen", "12:00")}${feld("pause", "Pause", "Regel")}</div></div>`;
+    <div class="reihe">${felder}</div></div>`;
+}
+// Werte einer Zeile der Blockliste (Formular und Blatt eines Eintrags), Zeiten normalisiert; eine Zeile ohne Uhrzeit liefert {art, dauer}.
+function blockLesen(r) {
+  const f = n => r.querySelector(`[data-feld="${n}"]`), art = f("art")?.value || einOrt() || "ho";
+  if (f("dauer")) return {art, dauer: zeitNorm(f("dauer").value)};
+  return {art, kommen: zeitNorm(f("kommen").value), gehen: zeitNorm(f("gehen").value), pause: f("pause").value.trim() ? pauseNorm(f("pause").value) : ""};
 }
 // Blatt zum Eintragen und Ändern eines Tages: oben die Schnellwahl, darunter „Einzelheiten“ mit Stunden, Kommen–Gehen–Pause (auch mit Homeoffice- und
 // Büro-Block), Art, Attest, Konto, Freigabe, Anmerkung und Vermerk. Gespeichert wird mit PUT /tag, danach steht die Rückgängig-Leiste da; Fehler erscheinen im
@@ -2358,7 +2634,7 @@ async function tagBearbeiten(datum) {
     <div class="reihe"><div${ortVersteckt("ho", z.ho)}><label>Stunden HO</label><input id="e-ho" inputmode="numeric" placeholder="hh:mm" value="${z.ho}"></div>
     <div${ortVersteckt("dst", z.dst)}><label>Stunden Büro</label><input id="e-dst" inputmode="numeric" placeholder="hh:mm" value="${z.dst}"></div></div>
     <details class="vb" ${z.kommen || z.eintraege?.length ? "open" : ""}><summary>Kommen – Gehen – Pause</summary>
-      <div id="e-klassisch">${einOrt() ? festerOrt("e-ort") : `<label>Wo?</label><div class="seg" id="e-ort">${[["ho", "Homeoffice"], ["dst", "Büro"], ["beides", "Beides"]].map(([k, t]) => `<button type="button" data-v="${k}" class="${k === (z.ho && z.dst ? "beides" : z.dst ? "dst" : "ho") ? "on" : ""}">${t}</button>`).join("")}</div>`}
+      <div id="e-klassisch">${einOrt() ? festerOrt("e-ort") : `<label>Wo?</label>${segHtml([["ho", "Homeoffice"], ["dst", "Büro"], ["beides", "Beides"]], z.ho && z.dst ? "beides" : z.dst ? "dst" : "ho", {id: "e-ort"})}`}
       <div id="e-bloecke" data-stil="display:none"><div class="reihe"><div><label>Homeoffice von</label><input id="e-hv" inputmode="numeric" placeholder="07:30"></div><div><label>Homeoffice bis</label><input id="e-hb" inputmode="numeric" placeholder="11:00"></div></div>
       <div class="reihe"><div><label>Büro von</label><input id="e-dv" inputmode="numeric" placeholder="12:00"></div><div><label>Büro bis</label><input id="e-db" inputmode="numeric" placeholder="16:00"></div></div></div>
       <div class="reihe"><div class="e-kg-feld"><label>Kommen</label><input id="e-kommen" inputmode="numeric" placeholder="07:30" value="${z.kommen || ""}"></div><div class="e-kg-feld"><label>Gehen</label><input id="e-gehen" inputmode="numeric" placeholder="16:00" value="${z.gehen || ""}"></div>
@@ -2369,9 +2645,9 @@ async function tagBearbeiten(datum) {
     <div id="kd-hinweis" hidden><p class="hinweis">${KD_SATZ}</p>${z.aufgefuellt_min > 0 ? `<p class="hinweis">Aufgefüllt: ${esc(z.aufgefuellt)} Std.</p>` : ""}</div>
     <div id="attest-zeile" data-stil="display:none"><label>Attest abgegeben am <small>(gilt für alle zusammenhängenden Kranktage; Datum löschen entfernt es für die ganze Folge)</small></label><input id="e-attest" type="date" value="${esc(z.attest || "")}"></div>
     <div id="konto-zeile" data-stil="display:none"><label>Konto (angesparter Urlaub)</label><select id="e-konto"></select></div>
-    <div class="zeile"><span>Über 10 Stunden freigegeben<br><small>sonst höchstens 10 Stunden Arbeitszeit pro Tag</small></span><input type="checkbox" id="e-frei" ${z.freigabe ? "checked" : ""} aria-label="Über 10 Stunden freigegeben"></div>
+    <div class="zeile"><span>Über 10 Stunden freigegeben<br><small>sonst verfällt Arbeitszeit über der Tagesgrenze als Kappzeit</small></span><input type="checkbox" id="e-frei" ${z.freigabe ? "checked" : ""} aria-label="Über 10 Stunden freigegeben"></div>
     <label>Anmerkung</label><input id="e-notiz" value="${esc(z.notiz)}">${vorlagenHtml()}
-    <label>Vermerk</label><div class="seg vermerk" id="e-vermerk">${Object.entries(VERMERK_TEXT).map(([k, t]) => `<button type="button" data-v="${k}" class="${k === (z.vermerk || "") ? "on" : ""}">${esc(t).replaceAll("/", "/<wbr>")}</button>`).join("")}</div>
+    <label>Vermerk</label>${segHtml(Object.entries(VERMERK_TEXT).map(([k, t]) => [k, esc(t).replaceAll("/", "/<wbr>")]), z.vermerk || "", {id: "e-vermerk", klasse: "vermerk"})}
     <p class="hinweis">${VERMERK_HINWEIS}</p>
     <div id="geprueft-zeile"${z.vermerk ? "" : " hidden"}><div class="zeile"><span>Zeiten geprüft</span><input type="checkbox" id="e-geprueft" ${z.geprueft ? "checked" : ""} aria-label="Zeiten geprüft"></div></div></details>
     <div id="e-fehler"></div>
@@ -2419,16 +2695,8 @@ async function tagBearbeiten(datum) {
   const bloecke = () => {
     const w = id => zeitNorm($(id).value), hv = w("#e-hv"), hb = w("#e-hb"), dv = w("#e-dv"), db = w("#e-db");
     if (!(hv && hb && dv && db)) return null;
-    const h = [minuten(hv), minuten(hb)], d = [minuten(dv), minuten(db)];
-    if (h[1] <= h[0] || d[1] <= d[0]) return {fehler: "Bei jedem Block muss „bis“ nach „von“ liegen."};
-    const [erst, dann] = h[0] <= d[0] ? [h, d] : [d, h];
-    if (dann[0] < erst[1]) return {fehler: "Homeoffice und Büro überschneiden sich."};
-    const kommen = erst[0], gehen = dann[1], luecke = dann[0] - erst[1], spanne = gehen - kommen;
-    const eigen = !!$("#e-pause").dataset.eigen, pause = eigen ? minuten(pauseNorm($("#e-pause").value)) : Math.max(luecke, pauseAuto(spanne));
-    if (pause < luecke) return {fehler: `Die Pause muss mindestens die Zeit zwischen den Blöcken sein (${zeitText(luecke)}).`};
-    const abzug = pause - luecke, hoMin = (h[1] - h[0]) - (dann === h ? abzug : 0), dstMin = (d[1] - d[0]) - (dann === d ? abzug : 0);
-    if (hoMin <= 0 || dstMin <= 0) return {fehler: "Die Pause ist länger als ein Block."};
-    return {kommen: hhmm(kommen), gehen: hhmm(gehen), pause, eigen, hoMin, dstMin};
+    const eigen = !!$("#e-pause").dataset.eigen;
+    return {...beidesRechnen([minuten(hv), minuten(hb)], [minuten(dv), minuten(db)], eigen ? minuten(pauseNorm($("#e-pause").value)) : null, datum, $("#e-frei").checked), eigen};
   };
   // Rechnet aus Kommen, Gehen und Pause (bei „Beides“ aus den beiden Blöcken) die Arbeitszeit und füllt Felder und Hinweis.
   const kg = () => {
@@ -2445,45 +2713,45 @@ async function tagBearbeiten(datum) {
       $("#e-kommen").value = b.kommen; $("#e-gehen").value = b.gehen;
       if (!b.eigen) $("#e-pause").value = hhmm(b.pause);
       $("#e-ho").value = hhmm(b.hoMin); $("#e-dst").value = hhmm(b.dstMin);
-      $("#e-kg").textContent = `Arbeitszeit ${zeitText(b.hoMin + b.dstMin)} Std. (HO ${zeitText(b.hoMin)}, Büro ${zeitText(b.dstMin)}), ${b.kommen}–${b.gehen}, Pause ${zeitText(b.pause)} ${b.eigen ? "(selbst eingetragen)" : "(Lücke und Pausenregel)"}`;
+      $("#e-kg").textContent = `Arbeitszeit ${zeitText(b.hoMin + b.dstMin)} Std. (HO ${zeitText(b.hoMin)}, Büro ${zeitText(b.dstMin)}), ${b.kommen}–${b.gehen}, Pause ${zeitText(b.pause)} ${b.eigen ? "(selbst eingetragen)" : "(Lücke und Pausenregel)"}${b.kapp ? `, Kappzeit ${zeitText(b.kapp)} Std.` : ""}`;
       return;
     }
     const k = $("#e-kommen").value, g = $("#e-gehen").value;
     if (!k || !g) return;
-    const spanne = minuten(zeitNorm(g)) - minuten(zeitNorm(k)), eigen = !!$("#e-pause").dataset.eigen, pause = eigen ? minuten(pauseNorm($("#e-pause").value)) : pauseAuto(spanne), arbeit = spanne - pause, ort = artWert("e-ort");
+    const block = {k: minuten(zeitNorm(k)), g: minuten(zeitNorm(g)), p: $("#e-pause").dataset.eigen ? minuten(pauseNorm($("#e-pause").value)) : 0};
+    const spanne = block.g - block.k, eigen = !!$("#e-pause").dataset.eigen, ort = artWert("e-ort");
+    const {kapp, pause} = spanne > 0 && block.p < spanne ? tagRechnen([block], 0, datum, $("#e-frei").checked) : {kapp: 0, pause: block.p}, arbeit = spanne > 0 ? block.m : 0;
     if (!eigen && spanne > 0) $("#e-pause").value = hhmm(pause);
-    if (spanne <= 0 || arbeit <= 0) { $("#e-kg").innerHTML = meldung("„Gehen“ muss nach „Kommen“ liegen, und die Pause muss kürzer sein als die Zeit dazwischen (nach Mitternacht: z. B. 26:00)."); return; }
+    if (spanne <= 0 || block.p >= spanne) { $("#e-kg").innerHTML = meldung("„Gehen“ muss nach „Kommen“ liegen, und die Pause muss kürzer sein als die Zeit dazwischen (nach Mitternacht: z. B. 26:00)."); return; }
     if (ort === "ho") { $("#e-ho").value = hhmm(arbeit); $("#e-dst").value = ""; }
     else if (ort === "dst") { $("#e-dst").value = hhmm(arbeit); $("#e-ho").value = ""; }
     else $("#e-dst").value = hhmm(Math.max(0, arbeit - minuten(zeitNorm($("#e-ho").value))));
-    $("#e-kg").textContent = `Arbeitszeit ${zeitText(arbeit)} Std., Pause ${zeitText(pause)} ${eigen ? "(selbst eingetragen)" : "(nach Pausenregel)"}${ort === "beides" ? " · „Stunden HO“ ist der HO-Anteil, der Rest zählt als Büro" : ""}`;
+    $("#e-kg").textContent = `Arbeitszeit ${zeitText(arbeit)} Std., Pause ${zeitText(pause)} ${eigen ? "(selbst eingetragen, mindestens nach Pausenregel)" : "(nach Pausenregel)"}${kapp ? `, Kappzeit ${zeitText(kapp)} Std.` : ""}${ort === "beides" ? " · „Stunden HO“ ist der HO-Anteil, der Rest zählt als Büro" : ""}`;
   };
   ["#e-kommen", "#e-gehen"].forEach(id => $(id).onblur = e => { e.target.value = zeitNorm(e.target.value); kg(); });
   $("#e-pause").onblur = e => { e.target.value = pauseNorm(e.target.value); e.target.dataset.eigen = e.target.value ? 1 : ""; kg(); };     // leeren: wieder nach Regel
   $("#e-ho").addEventListener("blur", kg);
+  $("#e-frei").addEventListener("change", kg);
   ["#e-hv", "#e-hb", "#e-dv", "#e-db"].forEach(id => $(id).onblur = e => { e.target.value = zeitNorm(e.target.value); kg(); });
   w.querySelectorAll("#e-ort button").forEach(b => b.addEventListener("click", kg));
   // Blockliste (Wunsch vom 24.11.2026): an einem Tag mit mehreren Einträgen gleich offen, sonst nach „+ Block“; dann gilt sie statt Kommen–Gehen oben.
   let blockModus = false;
   const geaendert = () => { if (ziel) ziel.dataset.geaendert = 1; };
   // Alle Zeilen der Liste (auch leere, zum Neuzeichnen) bzw. nur die ausgefüllten (Rechnen, Speichern); Zeiten wie die übrigen Felder normalisiert.
-  const blockZeilen = () => [...w.querySelectorAll(".e-block")].map(r => {
-    const f = n => r.querySelector(`[data-feld="${n}"]`);
-    return {art: f("art")?.value || einOrt() || "ho", kommen: zeitNorm(f("kommen").value), gehen: zeitNorm(f("gehen").value), pause: f("pause").value.trim() ? pauseNorm(f("pause").value) : ""};
-  });
-  const bloeckeVoll = () => blockZeilen().filter(b => b.kommen || b.gehen);
+  const blockZeilen = () => [...w.querySelectorAll(".e-block")].map(blockLesen);
+  const bloeckeVoll = () => blockZeilen().filter(b => b.kommen || b.gehen || b.dauer);
   // Hinweis unter der Liste: Arbeitszeit und Pause wie der Dienst sie rechnet, oder der Fehler; die Stunden HO und Büro folgen den Blöcken.
   const blockHinweis = () => {
-    const l = bloeckeVoll(), r = l.length ? bloeckeRechnen(l) : null;
+    const l = bloeckeVoll(), r = l.length ? bloeckeRechnen(l, datum, $("#e-frei").checked) : null;
     if (!r) { $("#e-kg").textContent = "Trag je Block Kommen und Gehen ein. Die Lücke zwischen den Blöcken ist keine Pause."; return; }
     if (r.fehler) { $("#e-kg").innerHTML = meldung(r.fehler); return; }
     $("#e-ho").value = r.hoMin ? hhmm(r.hoMin) : ""; $("#e-dst").value = r.dstMin ? hhmm(r.dstMin) : "";
-    $("#e-kg").textContent = `Arbeitszeit ${zeitText(r.hoMin + r.dstMin)} Std. in ${l.length} ${l.length === 1 ? "Block" : "Blöcken"}, Pause ${zeitText(r.pause)} (leer = nach Pausenregel)`;
+    $("#e-kg").textContent = `Arbeitszeit ${zeitText(r.hoMin + r.dstMin)} Std. in ${l.length} ${l.length === 1 ? "Block" : "Blöcken"}, Pause ${zeitText(r.pause)} (Lücken zählen an)${r.kapp ? `, Kappzeit ${zeitText(r.kapp)} Std.` : ""}`;
   };
   // Zeichnet die Liste neu und bindet ihre Felder; ohne Zeile gilt wieder Kommen–Gehen oben (leer, die Stunden ebenso).
   const blockZeigen = liste => {
     blockModus = liste.length > 0;
-    $("#e-liste").innerHTML = liste.map(blockZeileHtml).join("");
+    $("#e-liste").innerHTML = liste.map((b, i) => blockZeileHtml(b, i)).join("");
     if (!blockModus) { $("#e-ho").value = $("#e-dst").value = ""; }
     $("#e-liste").querySelectorAll("input").forEach(e => e.onblur = () => { e.value = e.dataset.feld === "pause" ? pauseNorm(e.value) : zeitNorm(e.value); kg(); });
     $("#e-liste").querySelectorAll("select").forEach(e => e.onchange = kg);
@@ -2493,11 +2761,13 @@ async function tagBearbeiten(datum) {
     });
     kg();
   };
-  // Kommen–Gehen oben als Blöcke (bei „Beides“ die zwei Blöcke); danach sind die Felder oben leer, damit nach dem Löschen aller Blöcke nichts Altes bleibt.
+  // Kommen–Gehen oben als Blöcke (bei „Beides“ die zwei Blöcke, ohne Kommen die Stunden als Blöcke ohne Uhrzeit); danach sind die Felder oben leer,
+  // damit nach dem Löschen aller Blöcke nichts Altes bleibt.
   const blockAn = () => {
     const ort = artWert("e-ort"), oben = ort === "beides"
       ? [["ho", "#e-hv", "#e-hb"], ["dst", "#e-dv", "#e-db"]].map(([art, v, b]) => ({art, kommen: zeitNorm($(v).value), gehen: zeitNorm($(b).value), pause: ""})).filter(b => b.kommen)
-      : $("#e-kommen").value ? [{art: ort, kommen: zeitNorm($("#e-kommen").value), gehen: zeitNorm($("#e-gehen").value), pause: $("#e-pause").dataset.eigen ? pauseNorm($("#e-pause").value) : ""}] : [];
+      : $("#e-kommen").value ? [{art: ort, kommen: zeitNorm($("#e-kommen").value), gehen: zeitNorm($("#e-gehen").value), pause: $("#e-pause").dataset.eigen ? pauseNorm($("#e-pause").value) : ""}]
+      : [["ho", "#e-ho"], ["dst", "#e-dst"]].map(([art, id]) => ({art, dauer: zeitNorm($(id).value)})).filter(b => minuten(b.dauer) > 0);
     ["#e-kommen", "#e-gehen", "#e-pause", "#e-hv", "#e-hb", "#e-dv", "#e-db"].forEach(id => { $(id).value = ""; });
     $("#e-pause").dataset.eigen = "";
     return oben;
@@ -2507,13 +2777,14 @@ async function tagBearbeiten(datum) {
     blockZeigen([...l, {art: l.length ? l[l.length - 1].art : einOrt() || "ho", kommen: "", gehen: "", pause: ""}]);
     w.querySelector(`#e-b${l.length}-kommen`).focus(); geaendert();
   };
-  // Angaben der Liste für PUT /tag: ein Block wie bisher als Kommen–Gehen mit Ort, mehrere als „eintraege“; ohne Liste nichts.
+  // Angaben der Liste für PUT /tag: ein Block mit Uhrzeit wie bisher als Kommen–Gehen mit Ort, mehrere oder einer ohne Uhrzeit als „eintraege“; ohne Liste nichts.
   const blockDaten = () => {
     if (!blockModus) return {};
     const liste = bloeckeVoll(), [b] = liste;
-    return liste.length > 1 ? {eintraege: liste} : b ? {kommen: b.kommen, gehen: b.gehen, pause: b.pause, ort: b.art} : {kommen: "", gehen: "", pause: ""};
+    return liste.length > 1 || b?.dauer ? {eintraege: liste} : b ? {kommen: b.kommen, gehen: b.gehen, pause: b.pause, ort: b.art} : {kommen: "", gehen: "", pause: ""};
   };
-  if ((z.eintraege?.length || 0) > 1) { blockAn(); blockZeigen(bloeckeAusTag(z)); } else kg();
+  // Liste gleich offen mit mehreren Einträgen, davon einer mit Uhrzeit (nur Stunden ohne Uhrzeit bleiben in den Feldern „Stunden“ oben)
+  if ((z.eintraege?.length || 0) > 1 && z.eintraege.some(e => e.kommen)) { blockAn(); blockZeigen(bloeckeAusTag(z)); } else kg();
   // Speichert den Tag, schließt das Blatt, bietet Rückgängig an (text: Meldung der Leiste), zeichnet neu und setzt den Fokus zurück auf den Tag.
   const senden = async (daten, text = "Gespeichert.") => {
     try {
@@ -2539,16 +2810,19 @@ async function tagBearbeiten(datum) {
   w.querySelectorAll("[data-schnell]").forEach(b => b.onclick = gesperrt(() => schnellWaehlen(b.dataset.schnell)));
 }
 // Kachel eines Tages (Ist, Soll, Saldo; Saldo nur bis heute) mit Titel, z. B. „Heute, Mi 19.“ (Woche) oder „Mo 23.02.“ (Tag-Reiter); ohne Tag leer.
+// Zeile „Kappzeit 0:30 (über 10:00 Std.)“ der Karte des Tages (Auftrag vom 25.11.2026; Felder aus stempel.mit_eintraegen), leer ohne Kappzeit.
+const kappzeitZeile = t => t.kappzeit_min > 0 ? wertZeile("Kappzeit", `${esc(t.kappzeit)} <small>(${esc(t.kappzeit_grund)})</small>`, "", "zeile gr", "tag-kappzeit") : "";
 function tagKarteHtml(t, vorz, titel) {
   if (!t) return "";
   const kopf = `<h2>${esc(titel)}</h2>`;
-  if (t.soll_min === 0 && t.arbeit_min === 0) return `<div class="card">${kopf}<div class="zeile gr"><span>Ist</span><b>${zeitText(t.ist_min || 0)}</b></div>
-    <div class="zeile gr"><span>${t.feiertag ? esc(t.feiertag) : "Freier Tag"}</span><b>${t.freizeit ? `<span class="saldo ${vorz(t.freizeit_min)}">Freizeit ${t.freizeit}</span>` : "kein Soll"}</b></div></div>`;
+  if (t.soll_min === 0 && t.arbeit_min === 0) return `<div class="card">${kopf}${wertZeile("Ist", zeitText(t.ist_min || 0))}
+    ${wertZeile(t.feiertag ? esc(t.feiertag) : "Freier Tag", t.freizeit ? `<span class="saldo ${vorz(t.freizeit_min)}">Freizeit ${t.freizeit}</span>` : "kein Soll")}${kappzeitZeile(t)}</div>`;
   const saldo = t.ist_soll_min - t.arbeit_min;                 // Ist mit Auffüllung bei „Krank im Dienst“ (zählt für Soll und Ist, U3a); ein Tag nach heute zählt im Kern noch nicht zum Saldo
-  return `<div class="card">${kopf}<div class="zeile gr"><span>Ist</span><b>${zeitText(t.ist_soll_min)}</b></div><div class="zeile gr"><span>Soll</span><b>${zeitText(t.arbeit_min)}</b></div>
-    ${t.zukunft ? "" : `<div class="zeile gr"><span>Saldo</span><b class="saldo ${vorz(saldo)}">${zeitText(saldo, true)}</b></div>`}
+  return `<div class="card">${kopf}${wertZeile("Ist", zeitText(t.ist_soll_min))}${wertZeile("Soll", zeitText(t.arbeit_min))}
+    ${t.zukunft ? "" : wertZeile("Saldo", zeitText(saldo, true), `saldo ${vorz(saldo)}`)}
     ${t.aufgefuellt_min > 0 ? `<p class="hinweis">davon Krank im Dienst aufgefüllt ${esc(t.aufgefuellt)}</p>` : ""}
-    ${t.art ? `<div class="zeile gr"><span>Art</span><b>${ARTEN[t.art]}</b></div>` : ""}</div>`;
+    ${kappzeitZeile(t)}
+    ${t.art ? wertZeile("Art", ARTEN[t.art]) : ""}</div>`;
 }
 // ---- Laufende Stempeluhr auf der Seite Tag (Wunsch vom 23.11.2026): nur heute, mit denselben Minuten wie die Kacheln der Übersicht (laufendeMinuten)
 let tagLiveStand = null;                                             // {t, titel} des zuletzt gezeichneten Tages, für den Sekundentakt
@@ -2581,12 +2855,65 @@ function tagLaufend() {
     if (knopf) knopf.focus({preventScroll: true});
   }
 }
-// Einzelne Einträge des Tages auf der Seite Tag (Wunsch vom 23.11.2026), aus „eintraege“ von GET /woche (nur bei mehr als einem): je Zeile Ort mit
-// Kommen–Gehen, eigene Pause und Dauer. data-d wie die Tageszeile: Tippen öffnet das Bearbeiten des Tages (der Tag wird als Ganzes bearbeitet).
+// Einzelne Einträge des Tages auf der Seite Tag (Wunsch vom 23.11.2026, einzeln änderbar seit 25.11.2026), aus „eintraege“ von GET /woche (auch ein
+// einzelner und Stunden ohne Uhrzeit): je Zeile ein Knopf mit Ort, Kommen–Gehen (oder „ohne Uhrzeit“), eigener Pause und Dauer. Ohne data-d (nicht die
+// Tageszeile): data-eintrag ist die Nummer, Tippen öffnet nur diesen Eintrag (eintraegeBinden).
 const EINTRAG_ORT = {ho: ["ho", "HO"], dst: ["ds", "Büro"]};
+const EINTRAG_OHNE_UHRZEIT = "ohne Uhrzeit";
 function tagEintraegeHtml(t) {
-  return (t.eintraege || []).map(e => { const [klasse, ort] = EINTRAG_ORT[e.art] || EINTRAG_ORT.ho;
-    return `<div class="tag einzel" data-d="${esc(t.datum)}"><div class="dat"></div><div class="mitte"><div class="zeiten"><span class="chip ${klasse}">${ort} ${esc(e.kommen)}–${esc(e.gehen)}</span></div>${e.pause ? `<div class="info">Pause ${esc(e.pause)}</div>` : ""}</div><div class="ist">${esc(e.dauer)}</div></div>`; }).join("");
+  return (t.eintraege || []).map((e, i) => { const [klasse, ort] = EINTRAG_ORT[e.art] || EINTRAG_ORT.ho, zeit = e.kommen ? `${esc(e.kommen)}–${esc(e.gehen)}` : EINTRAG_OHNE_UHRZEIT;
+    return `<button type="button" class="tag einzel" data-eintrag="${i}" aria-label="${ort} ${zeit}, ${esc(e.dauer)}. Ändern oder löschen"><span class="dat"></span><span class="mitte"><span class="zeiten"><span class="chip ${klasse}">${ort} ${zeit}</span></span>${e.pause ? `<span class="info">Pause ${esc(e.pause)}</span>` : ""}</span><span class="ist">${esc(e.dauer)}</span></button>`; }).join("");
+}
+// Knopf „+ Eintrag“ unter den Einträgen der Seite Tag, auch an einem Tag, der schon Zeit hat (data-eintrag -1: neu).
+const eintragNeuHtml = () => '<button type="button" class="leise eintrag-neu" data-eintrag="-1">+ Eintrag</button>';
+// Bindet auf der Seite Tag die Einträge und „+ Eintrag“ an eintragBearbeiten (nach dem Zeichnen, window.nachher); d: Datum der Seite.
+function eintraegeBinden(d) {
+  document.querySelectorAll("#inhalt [data-eintrag]").forEach(b => b.onclick = () => eintragBearbeiten(d, +b.dataset.eintrag));
+}
+// Angaben für PUT /tag nach dem Ändern (block), Löschen (block null) oder Anlegen (i < 0) eines Eintrags auf der Seite Tag: alle Blöcke des Tages
+// (bloeckeAusTag, die übrigen mit ihrer Pause) mit dem einen geänderten, dazu Art, Anmerkung, Attest, Konto und Freigabe des Tages (Vermerk und „geprüft“
+// behält der Dienst, weil sie fehlen). Ohne Block bleiben Stunden und Uhrzeiten leer.
+function eintragDaten(z, i, block) {
+  const liste = bloeckeAusTag(z);
+  if (i < 0) liste.push(block); else liste.splice(i, 1, ...(block ? [block] : []));
+  const tag = {art: z.art || "", notiz: z.notiz || "", attest: z.attest || "", konto: z.konto || 0, freigabe: z.freigabe || 0};
+  return liste.length ? {...tag, eintraege: liste} : {...tag, ho: "", dst: "", kommen: "", gehen: "", pause: ""};
+}
+const EINTRAG_FEHLER_FELD = [["Block", "#blatt-inh .e-block input"], ["Die Blöcke", "#blatt-inh .e-block input"], ["Mehr als 10 Stunden", "#blatt-inh .e-block input"]];
+// Blatt für einen Eintrag der Seite Tag (Wunsch vom 25.11.2026): Ort, Kommen, Gehen und Pause (Stunden ohne Uhrzeit: Ort und Stunden), „Löschen“ in der Zeile;
+// i < 0 legt einen neuen an. Gespeichert wird der ganze Tag mit PUT /tag (eintragDaten), danach die Rückgängig-Leiste; Fehler stehen im Blatt, die Eingaben bleiben.
+// Ein Tag mit Homeoffice und Büro in einem Kommen–Gehen hat keine Einträge: dann öffnet das Formular des ganzen Tages.
+async function eintragBearbeiten(datum, i) {
+  if (!(await zeitVerwerfenOk())) return;
+  const z = ((window.monatDaten || {}).tage || []).find(x => x.datum === datum);
+  if (!z) return;
+  if (z.ist_min > 0 && !z.eintraege?.length) return tagBearbeiten(datum);
+  const b = i < 0 ? {art: einOrt() || z.eintraege?.at(-1)?.art || "ho", kommen: "", gehen: "", pause: ""} : bloeckeAusTag(z)[i];
+  blatt(`<h3>${i < 0 ? "Neuer Eintrag" : "Eintrag"} · ${z.wt} ${datum.slice(8)}.${datum.slice(5, 7)}.</h3>${blockZeileHtml(b, 0, "ei")}
+    ${"dauer" in b ? "" : `<p class="hinweis" id="ei-pause-hinweis"${b.pause ? " hidden" : ""}>Pause leer: nur die Pflichtpause (${pausenText()}). Die App rechnet sie über den ganzen Tag, Lücken zählen an.</p>`}<div id="ei-fehler"></div>
+    <div class="knoepfe"><button class="prim" id="ei-ok">Speichern</button><button id="ei-zu">Abbrechen</button></div>`);
+  const w = $("#blatt-inh"), zeile = w.querySelector(".e-block"), weg = zeile.querySelector("[data-weg]");
+  zeile.querySelectorAll("input").forEach(e => e.onblur = () => {
+    e.value = e.dataset.feld === "pause" ? pauseNorm(e.value) : zeitNorm(e.value);
+    if (e.dataset.feld === "pause" && $("#ei-pause-hinweis")) $("#ei-pause-hinweis").hidden = !!e.value;   // der Hinweis gilt nur für eine leere Pause
+  });
+  const senden = async (block, text) => {
+    const daten = eintragDaten(z, i, block), fehler = daten.eintraege && bloeckeRechnen(daten.eintraege).fehler;   // wie im Formular: Fehler schon vor dem Senden
+    if (fehler) { formFehler($("#ei-fehler"), fehler, {feld: zeile.querySelector("input")}); return; }
+    try {
+      const r = await api("PUT", "/tag", {datum, ...daten}); blattZu();
+      rueckgaengigZeigen(r, text) || toast(text); await zeigen();
+      if (zeitDaneben()) await tagBearbeiten(datum);                       // die Spalte daneben zeigt den gespeicherten Stand
+    } catch (e) { formFehler($("#ei-fehler"), e.message, {felder: EINTRAG_FEHLER_FELD}); }
+  };
+  $("#ei-ok").onclick = gesperrt(() => senden(blockLesen(zeile), "Eintrag gespeichert."));
+  if (i < 0) weg.remove(); else weg.onclick = gesperrt(() => senden(null, "Eintrag gelöscht."));
+  $("#ei-zu").onclick = blattZu;
+}
+// Woche und Monat (Wunsch vom 25.11.2026): Tippen oder Enter auf einen Tag öffnet die Seite Tag dieses Tages (dort jeder Eintrag einzeln) statt des Formulars.
+// Läuft nach zeitSpalte, das die Tage sonst ans Bearbeiten bindet; ungesicherte Änderungen der Spalte daneben fragen vorher.
+function zeitTagSprung() {
+  document.querySelectorAll(ZEIT_TAGE).forEach(e => e.onclick = async () => { if (await zeitVerwerfenOk()) location.hash = zeitAdresse("tag", e.dataset.d); });
 }
 // Kennzeichen eines Tages für Zeilen in Monat, Woche und Tag: Homeoffice, Büro, Art und das Zeichen des Vermerks.
 const tagChips = z => [z.ho ? `<span class="chip ho">HO ${z.ho}</span>` : "", z.dst ? `<span class="chip ds">Büro ${z.dst}</span>` : "",
@@ -2601,14 +2928,20 @@ function tagLeerHtml(z) {
   if (z.zukunft) return z.soll_min > 0 ? `<span class="leer-tag soll-spaeter">Soll ${zeitText(z.soll_min)}</span>` : "";
   return z.soll ? '<span class="leer-tag">noch nichts eingetragen</span>' : "";
 }
-// Zeile eines Tages (Woche und Tag-Reiter): Datum, HO/Büro, Art, Feiertag, Kommen–Gehen, Vermerk, Notiz, Ist (mit Auffüllung) und Saldo; heute hervorgehoben.
-// einzeln: Seite Tag, die Einträge stehen darunter (tagInfo).
-function tagZeileHtml(z, heuteIso, vorz, einzeln) {
+// Zeile eines Tages (Tag, Woche, Monat): Datum, HO/Büro, Art, Feiertag, Kommen–Gehen, Vermerk, Notiz, Ist (mit Auffüllung) und Saldo; heute hervorgehoben.
+// einzeln: Seite Tag, die Einträge stehen darunter (tagInfo). rechtsSoll: Monat, rechts das Soll fürs Konto statt des Saldos; die Tage aus /monat
+// tragen weder zukunft noch soll_min, beides kommt hier aus heuteIso und soll_konto_min. Ein leerer späterer Tag zeigt sein Soll nur einmal (in der Mitte).
+function tagZeileHtml(z, heuteIso, vorz, einzeln, rechtsSoll) {
+  if (rechtsSoll) z = {...z, zukunft: z.datum > heuteIso, soll_min: z.soll_konto_min};
   const chips = tagChips(z), info = tagInfo(z, einzeln);
+  const rechts = rechtsSoll ? (z.soll_konto_min > 0 && (chips || !z.zukunft) ? `<small>Soll ${zeitText(z.soll_konto_min)}</small>` : "") : tagSaldoHtml(z, vorz);
   return `<div class="tag ${z.frei ? "frei" : ""} ${z.datum === heuteIso ? "heute" : ""}" data-d="${z.datum}"><div class="dat"><b>${z.tag}</b><small>${z.wt}</small></div>
       <div class="mitte"><div class="zeiten">${chips || tagLeerHtml(z)}</div>${info ? `<div class="info">${esc(info)}</div>` : ""}</div>
-      <div class="ist">${z.ist_soll_min ? zeitText(z.ist_soll_min) : ""}${z.saldo && !z.zukunft ? `<small class="saldo ${vorz(z.saldo_min)}">${z.saldo}</small>` : ""}${z.freizeit && !z.zukunft ? `<small class="saldo ${vorz(z.freizeit_min)}"${md("freizeit")}>Freizeit ${z.freizeit}</small>` : ""}</div></div>`;
+      <div class="ist">${z.ist_soll_min ? zeitText(z.ist_soll_min) : ""}${rechts}</div></div>`;
 }
+// Saldo und Freizeit rechts in der Zeile (Tag, Woche), beide erst ab dem Tag selbst, nie für spätere Tage.
+const tagSaldoHtml = (z, vorz) => (z.saldo && !z.zukunft ? `<small class="saldo ${vorz(z.saldo_min)}">${z.saldo}</small>` : "")
+  + (z.freizeit && !z.zukunft ? `<small class="saldo ${vorz(z.freizeit_min)}"${md("freizeit")}>Freizeit ${z.freizeit}</small>` : "");
 // Hat der Tag irgendeinen Eintrag (Zeiten, Art, Notiz oder Vermerk)?
 const tagHatEintrag = z => !!(z.ho || z.dst || z.art || z.notiz || z.vermerk);
 // Leerzustand der Zeit-Reiter (funktionen.md 6.3): Karte mit Symbol, Satz und Knopf, wenn im gezeigten Zeitraum kein Tag einen Eintrag hat, sonst leer.
@@ -2636,7 +2969,7 @@ const ZEIT_JAHR_MIN = 1970, ZEIT_JAHR_MAX = 2200, ZEIT_BEARBEITEN = "bearbeiten"
 const ZEIT_KAL_GRENZEN = `min="${ZEIT_JAHR_MIN}-01-01" max="${ZEIT_JAHR_MAX}-12-31"`;   // Datumsfeld im Kopf: nur, was zeitParameter annimmt
 const ZEIT_TAGE = "#inhalt .tag[data-d], #inhalt .kz[data-d]";        // antippbare Tage in Tag, Woche und Monat
 const WISCH_STRECKE = 60, WISCH_DAUER_MS = 600, WISCH_RAND = 24;
-const WISCH_NICHT = "input, select, textarea, .tbl, [role=tablist], #tag-daneben";
+const WISCH_NICHT = "input, select, textarea, [contenteditable], .tbl, [role=tablist], #tag-daneben";
 
 // ---- Reine Regeln
 // ISO-Datum (JJJJ-MM-TT) als Date um 12 Uhr Ortszeit: Tage zählen so auch über die Zeitumstellung richtig.
@@ -2775,17 +3108,31 @@ function zeitTaste(e) {
 
 // ---- Wischen (nur Tag, Woche, Monat; ohne Animation)
 let wischAnfang = null;
-// Merkt den Anfang einer Geste mit Finger oder Stift, außer im Blatt, in Feldern, Tabellen, Reitern, in der Spalte und am Rand (Zurück-Gesten von iOS und Android).
-function wischStart(e) {
-  wischAnfang = ZEIT_SEITEN.includes(document.body.dataset.seite) && ["touch", "pen"].includes(e.pointerType) && !$("#blatt").classList.contains("auf")
-    && !e.target.closest(WISCH_NICHT) && e.clientX >= WISCH_RAND && e.clientX <= innerWidth - WISCH_RAND ? {x: e.clientX, y: e.clientY, t: e.timeStamp} : null;
+// Rollt ein Bereich zwischen Ziel und #inhalt selbst waagrecht (breite Karte, Diagramm)? Dann gehört die Geste ihm; so braucht nicht jede neue Karte eine Klasse in WISCH_NICHT.
+function wischRolltSelbst(ziel) {
+  for (let e = ziel; e && e.id !== "inhalt"; e = e.parentElement) if (e.scrollWidth > e.clientWidth && /auto|scroll/.test(getComputedStyle(e).overflowX)) return true;
+  return false;
 }
-// Blättert bei einer schnellen waagrechten Geste (mind. 60 px, doppelt so weit wie senkrecht, unter 600 ms): nach links vor, nach rechts zurück.
-function wischEnde(e) {
-  const a = wischAnfang; wischAnfang = null;
-  if (!a) return;
+// Merkt den Anfang einer Geste mit Finger oder Stift, außer im Blatt, in Feldern, Tabellen, rollenden Bereichen, Reitern, in der Spalte und am Rand (Zurück-Gesten von iOS
+// und Android). Ein zweiter Finger (Zoomen) verwirft die Geste.
+function wischStart(e) {
+  wischAnfang = e.isPrimary && ZEIT_SEITEN.includes(document.body.dataset.seite) && ["touch", "pen"].includes(e.pointerType) && !$("#blatt").classList.contains("auf")
+    && !e.target.closest(WISCH_NICHT) && !wischRolltSelbst(e.target) && e.clientX >= WISCH_RAND && e.clientX <= innerWidth - WISCH_RAND
+    ? {x: e.clientX, y: e.clientY, t: e.timeStamp, id: e.pointerId, auswahl: String(getSelection() || "")} : null;
+}
+// Richtung einer fertigen Geste a→e: 1 = vor (nach links gewischt), -1 = zurück, 0 = keine (unter 60 px, nicht doppelt so weit wie senkrecht oder ab 600 ms).
+function wischRichtung(a, e) {
   const dx = e.clientX - a.x, dy = e.clientY - a.y;
-  if (Math.abs(dx) >= WISCH_STRECKE && Math.abs(dx) > 2 * Math.abs(dy) && e.timeStamp - a.t < WISCH_DAUER_MS) zeitBlaettern(dx < 0 ? 1 : -1);
+  return Math.abs(dx) >= WISCH_STRECKE && Math.abs(dx) > 2 * Math.abs(dy) && e.timeStamp - a.t < WISCH_DAUER_MS ? (dx < 0 ? 1 : -1) : 0;
+}
+// Blättert am Ende der Geste desselben Zeigers; nicht, wenn dabei Text markiert wurde (eine schon vorher bestehende, unveränderte Markierung sperrt nicht).
+function wischEnde(e) {
+  const a = wischAnfang;
+  if (!a || e.pointerId !== a.id) return;
+  wischAnfang = null;
+  const auswahl = String(getSelection() || "");
+  const r = auswahl && auswahl !== a.auswahl ? 0 : wischRichtung(a, e);
+  if (r) zeitBlaettern(r);
 }
 // Bindet das Wischen an ein Element (#inhalt); ein abgebrochener Zeiger (Scrollen) löst nichts aus.
 function zeitWischen(feld) {
@@ -2795,8 +3142,8 @@ function zeitWischen(feld) {
 }
 
 // ---- Am Rechner: Tag rechts daneben (#tag-daneben, außerhalb von #inhalt, damit Eingaben das Neuzeichnen überstehen)
-// Steht das Formular rechts daneben? Nur im Design „web“ auf Tag, Woche und Monat; sonst das Blatt.
-function zeitDaneben() { return document.body.dataset.design === "web" && ZEIT_SEITEN.includes(document.body.dataset.seite); }
+// Steht das Formular rechts daneben? Nur im Design „web“ auf der Seite Tag; sonst das Blatt. Woche und Monat springen beim Tipp zur Seite Tag (K2, 25.11.2026).
+function zeitDaneben() { return document.body.dataset.design === "web" && document.body.dataset.seite === "tag"; }
 // Leert und versteckt die Spalte (Bereich Zeit verlassen, Wechsel aufs Handy-Design); ohne Rückfrage, ein Seitenwechsel lässt sich nicht aufhalten.
 function zeitDanebenZu() {
   const s = $("#tag-daneben");
@@ -2843,6 +3190,28 @@ const ZUTUN_SPAETER_TAGE = 7;
 // Zahl und Einheit bleiben in einer Zeile („50,07 %“, „9 Tage“): geschütztes Leerzeichen statt Leerzeichen.
 const einheitFest = s => String(s).replace(/ /g, "\u00a0");
 const ZUTUN_VERSION = /^\d{8}\.\d{4}$/;   // Form der Versionsnummer (update.VERSION_FORM): nur so wird sie Teil der Wiki-Adresse
+const ZUTUN_TAG_ISO = /^\d{4}-\d{2}-\d{2}$/;   // nur so wird ein Wert aus „fehlend“ Teil der Adresse #/tag/<datum>/bearbeiten
+const ZUTUN_TAG_WT = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+const ZUTUN_TAGE_SICHTBAR = 8;   // mehr fehlende Tage machen die Karte am Handy sehr hoch (22 Tage = 11 Zeilen); die älteren klappt „Alle Tage“ auf
+// Fehlende Tage (e.fehlend, ISO-Daten): je Tag ein Link zum Nachtragen; ohne eigene Listenpunkte, weil zutunWeg „#zutun li“ für die Zahl am Symbol zählt.
+// Über ZUTUN_TAGE_SICHTBAR Tagen sind nur die letzten sichtbar, die älteren stehen verborgen davor, dahinter der Knopf „Alle Tage“.
+function zutunTage(e) {
+  const tage = (Array.isArray(e.fehlend) ? e.fehlend : []).filter(t => typeof t === "string" && ZUTUN_TAG_ISO.test(t));
+  if (!tage.length) return "";
+  const verborgen = Math.max(0, tage.length - ZUTUN_TAGE_SICHTBAR);
+  const link = (t, i) => { const [j, m, d] = t.split("-"), wt = ZUTUN_TAG_WT[(new Date(Date.UTC(j, m - 1, d)).getUTCDay() + 6) % 7];
+    return `<a ${i < verborgen ? "hidden " : ""}class="btn" href="#/tag/${t}/bearbeiten" aria-label="${wt} ${d}.${m}.${j} nachtragen">${wt} ${d}.${m}.</a>`; };
+  const alle = verborgen ? `<button type="button" class="btn zt-alle" data-klick="zutunAlleTage" aria-label="Alle ${tage.length} fehlenden Tage zeigen">Alle Tage (${tage.length})</button>` : "";
+  return `<div class="knoepfe zt-tage" role="group" aria-label="Fehlende Tage">${tage.map(link).join("")}${alle}</div>`;
+}
+// „Alle Tage“: zeigt die verborgenen älteren Tage, nimmt den Knopf weg und setzt den Fokus auf den ältesten Tag.
+function zutunAlleTage() {
+  const gruppe = $("#zutun .zt-tage");
+  if (!gruppe) return;
+  gruppe.querySelectorAll("a[hidden]").forEach(a => { a.hidden = false; });
+  gruppe.querySelector(".zt-alle")?.remove();
+  gruppe.querySelector("a")?.focus();
+}
 // Knopf zum Ziel eines Eintrags: Seite der App oder genau die Release-Seite (neues Fenster, ohne Opener und Referrer); sonst keiner.
 // Einträge zu einer neuen Version (mit e.version) bekommen dazu „Was ist neu?“: Seite der Version im Wiki, bei unlesbarer Nummer die Übersicht.
 function zutunKnopf(e) {
@@ -2855,7 +3224,7 @@ function zutunKnopf(e) {
 function zutunKarte(antwort) {
   const liste = zutunSichtbar(antwort);
   if (!liste.length) return "";
-  const zeile = e => `<li class="zt-${e.stufe}" data-zutun="${esc(e.id)}"><p><span class="sr">${ZUTUN_STUFEN[e.stufe]}: </span>${esc(e.text)}</p><div class="knoepfe">`
+  const zeile = e => `<li class="zt-${e.stufe}" data-zutun="${esc(e.id)}"><p><span class="sr">${ZUTUN_STUFEN[e.stufe]}: </span>${esc(e.text)}</p>${zutunTage(e)}<div class="knoepfe">`
     + `${zutunKnopf(e)}<button ${kl("zutunSpaeter", e.id)}>Später</button>`
     + `${e.stufe !== "rot" ? `<button ${kl("zutunAus", e.id)}>Nicht mehr zeigen</button>` : ""}</div></li>`;
   return `<section class="card kachel breit zutun" id="zutun" aria-labelledby="zutun-titel"><h2 id="zutun-titel">Zu tun</h2><ul>${liste.map(zeile).join("")}</ul></section>`;
@@ -2915,23 +3284,7 @@ async function jahreswechselErledigt(id) {
 }
 
 // ---- Kacheln Heute, Diese Woche, Gleitzeit und Urlaub (Entscheidung des Entwicklers 24.11.2026): eine Angabe je Zeile, Zahl und Einheit nie getrennt
-const MV_TAGE = 29, MV_WOCHEN_TAGE = 91;                              // Verläufe: Tagessalden der letzten 30 Tage, Wochensalden der letzten 3 Monate (13 Wochen)
 const KEIN_ARBEITSTAG = "Kein Arbeitstag", ZAEHLT_FREIZEIT = "zählt zum Freizeitkonto", FREIZEIT_TEXT = "Arbeit an Wochenende und Feiertag";
-// Datum n Tage vor dem ISO-Datum t (JJJJ-MM-TT), über Monats- und Jahresgrenzen.
-function isoVor(t, n) { const d = isoZuDatum(t); d.setDate(d.getDate() - n); return datumZuIso(d); }
-// Saldo-Punkte der letzten tage Tage bis heute aus GET /gleitzeit/saldo (schritt „tag“ oder „woche“); ohne Modul Gleitzeit oder bei einem Fehler null.
-function saldoPunkte(tage, schritt) {
-  if (!modulAn("gleitzeit")) return null;
-  const bis = zeitHeuteIso();
-  return api("GET", `/gleitzeit/saldo?von=${isoVor(bis, tage)}&bis=${bis}&schritt=${schritt}`).catch(() => null);
-}
-// Verlauf einer Kachel: [Bild (gleitzeit_verlauf.js, aria-hidden) als eigenes Kind, Satz für den Screenreader im Zusatz]; ohne Bild ["", ""].
-// art „tag“ oder „woche“ läuft mit der Uhr mit (#mv-<art>).
-function kachelVerlauf(art, punkte, datum) {
-  UEBERSICHT_LIVE[art] = {punkte, datum};
-  const p = verlaufLive(punkte, datum), bild = miniVerlaufSvg(p, {art});
-  return bild ? [`<div class="mv" id="mv-${art}">${bild}</div>`, `<span class="sr">${miniVerlaufText(p, art)}</span>`] : ["", ""];
-}
 // Saldo mit Vorzeichen in seiner Farbe; id und data-min (ohne laufende Uhr) braucht uebersichtLaufend zum Weiterzählen.
 const saldoLive = (id, min) => `<span id="${id}" class="saldo ${saldoKlasse(min + laufendeMinuten())}" data-min="${min}">${zeitText(min + laufendeMinuten(), true)}</span>`;
 // Gebuchte Minuten mit laufender Uhr, Element mit id und data-min (gleitzeitLaufend zählt weiter).
@@ -2945,27 +3298,28 @@ const saldoHeute = t => `<span class="etikett">Saldo heute:</span> ${saldoLive("
 // Satz des Kerns („Bis 16:12 für dein Tagessoll“); mit Gehen-Zeit (Uhr läuft heute) mit id und Saldo ohne Uhr, damit uebersichtLaufend ihn beim
 // Erreichen des Solls auf „Tagessoll erreicht“ umschaltet, ohne die Übersicht neu zu zeichnen.
 const zielSatz = (t, z) => z?.gehen ? `<span id="gz-ziel-tag" data-min="${t.saldo_min || 0}">${esc(z.satz)}</span>` : esc(z?.satz || "");
-// Kachel „Heute“ (Ziel: Zeit › Tag heute). t: Tag heute aus GET /woche, z: „tagesziel“ derselben Antwort, v: Antwort von GET /gleitzeit/saldo (schritt tag).
-// Abwesenheit: Art groß; Wochenende/Feiertag: gearbeitet groß, kein Saldo; Arbeitstag: gearbeitet, Tagessoll, Saldo heute, Satz des Kerns. Saldo und
-// Verlauf nur mit Modul Gleitzeit. Gearbeitet, Saldo und der heutige Balken zählen mit der laufenden Uhr.
-function heuteKachel(t, z, v) {
-  const gz = modulAn("gleitzeit"), [verlauf, satz] = gz && v ? kachelVerlauf("tag", v.punkte || [], t.datum) : ["", ""];
+// Kachel „Heute“ (Ziel: Zeit › Tag heute). t: Tag heute aus GET /woche, z: „tagesziel“ derselben Antwort.
+// Abwesenheit: Art groß; Wochenende/Feiertag: gearbeitet groß, kein Saldo; Arbeitstag: gearbeitet, Tagessoll, Saldo heute, Satz des Kerns. Saldo nur
+// mit Modul Gleitzeit. Gearbeitet und Saldo zählen mit der laufenden Uhr. Seit 25.11.2026 ohne Balken (Wunsch): der Verlauf steht auf der Seite Tag.
+function heuteKachel(t, z) {
+  const gz = modulAn("gleitzeit");
   let wert, zeilen;
   if (tagAbwesend(t)) [wert, zeilen] = [`<span class="k-art" data-stil="--zeichen:${laengstesWort(ARTEN[t.art])}">${esc(ARTEN[t.art])}</span>`, []];
   else if (!t.soll_min) [wert, zeilen] = [istLive("gz-tag", t.ist_min || 0), [modulAn("freizeit") && z?.freizeit ? `${KEIN_ARBEITSTAG} · ${ZAEHLT_FREIZEIT}` : KEIN_ARBEITSTAG, gz && !t.frei && !t.vor_beginn && t.ist_min ? saldoHeute(t) : ""]];
   else [wert, zeilen] = [istLive("gz-tag", t.ist_min || 0), [`von ${einheitFest(zeitText(t.arbeit_min || 0))} Tagessoll`, gz ? saldoHeute(t) : "", zielSatz(t, z)]];
-  return kachel("Heute", wert, zeilen.filter(Boolean).join("<br>") + satz, `tag/${t.datum}`, "klein k-tag", "", verlauf);
+  return kachel("Heute", wert, [...zeilen, feierabendKachel(t.datum)].filter(Boolean).join("<br>"), `tag/${t.datum}`, "klein k-tag");
 }
-// Kachel „Diese Woche“: Ist der KW groß, Wochensoll, Saldo der Woche (Modul Gleitzeit), Wochensalden der letzten 3 Monate; v: GET /gleitzeit/saldo (schritt woche).
-function wocheKachel(wo, kw, v) {
-  const gz = modulAn("gleitzeit"), [verlauf, satz] = gz && v ? kachelVerlauf("woche", v.punkte || [], wo.von) : ["", ""];
+// Kachel „Diese Woche“: Ist der KW groß, Wochensoll, Saldo der Woche (Modul Gleitzeit); ohne Balken (Wunsch 25.11.2026, Verlauf auf der Seite Woche).
+function wocheKachel(wo, kw) {
+  const gz = modulAn("gleitzeit");
   const zeilen = [`von ${einheitFest(wo.soll_woche)} in KW\u00a0${kw}`, gz ? `<span class="etikett">Saldo dieser Woche:</span> ${saldoLive("gz-saldo-kw", wo.saldo_min)}` : ""];
-  return kachel("Diese Woche", istLive("gz-kw", wo.ist_min), zeilen.filter(Boolean).join("<br>") + satz, "woche", "klein k-woche", "woche", verlauf);
+  return kachel("Diese Woche", istLive("gz-kw", wo.ist_min), zeilen.filter(Boolean).join("<br>"), "woche", "klein k-woche", "woche");
 }
-// Kachel „Gleitzeit“: Konto groß, „Stand heute“, Kappung, Konto-Linie des Jahres mit Grenzen (gv: GET /gleitzeit/verlauf/<J>, null ohne Linie).
+// Kachel „Gleitzeit“: Konto groß, „Stand heute“, Kappung, darunter genau der Gleitzeit-Verlauf der Karte der Seite Woche (letzte 3 Wochen, Wunsch 25.11.2026;
+// gv: gleitzeitVerlauf("woche", …, true), null ohne Bild). Bild (aria-hidden) als eigenes Kind #gz-kachel, Satz für den Screenreader im Zusatz.
 function gleitzeitKachel(gz, gv) {
-  const linie = gv ? miniVerlaufSvg(gv.punkte || [], {art: "jahr", grenzePlus: Number(gv.plus_min) || 0, grenzeMinus: -(Number(gv.minus_min) || 0)}) : "";
-  const [verlauf, satz] = linie ? [`<div class="mv">${linie}</div>`, `<span class="sr">${miniVerlaufText(gv.punkte, "jahr")}</span>`] : ["", ""];
+  const [bild, text] = gv ? gzKachelBild(gv) : ["", ""];
+  const [verlauf, satz] = bild ? [`<div class="mv" id="gz-kachel">${bild}</div>`, `<span class="sr">${text}</span>`] : ["", ""];
   return kachel("Gleitzeit", `<span class="saldo ${saldoKlasse(gz.konto_min)}">${gz.konto}</span>`, `Stand heute${gz.kappung ? `<br>${esc(gz.kappung.text)}` : ""}${satz}`, WOCHE_GLEITZEIT, "k-gleitzeit", "gleitzeit", verlauf);
 }
 // Kachel „Urlaub“: Rest groß, „von 39 übrig“, Gleittage und Familientage je eine Zeile (nur mit ihrem Modul).
@@ -3125,42 +3479,42 @@ const krankKachelZusatz = kr => [kr.krank_start > 0 ? `${kr.krank_start} aus Sta
 async function seiteStart() {
   const j = heute.getFullYear(), m = heute.getMonth() + 1;
   const [kwJ, kw] = kwJahr(heute);
-  const [mo, ja, ho, wo, gz, kr, st, he, zt, jwAntwort, gv, vTag, vWoche] = await Promise.all([api("GET", `/monat/${j}/${m}`), api("GET", `/jahr/${j}`), api("GET", `/horest/${j}/${m}`),
+  const [mo, ja, ho, wo, gz, kr, st, he, zt, jwAntwort, gv] = await Promise.all([api("GET", `/monat/${j}/${m}`), api("GET", `/jahr/${j}`), api("GET", `/horest/${j}/${m}`),
     api("GET", `/woche/${kwJ}/${kw}`), api("GET", "/gleitzeit"), api("GET", `/krank/${j}`), api("GET", "/stempel"), api("GET", "/heute"), zutunLaden(),
-    api("GET", "/jahreswechsel").catch(() => null), modulAn("gleitzeit") ? api("GET", `/gleitzeit/verlauf/${j}`).catch(() => null) : null,   // nur Zusatz: ohne sie bleibt die Übersicht
-    saldoPunkte(MV_TAGE, "tag"), saldoPunkte(MV_WOCHEN_TAGE, "woche")]);
-  if (hashTeile()[1] === "stempel") window.nachher = () => { history.replaceState(history.state, "", "#/start"); stempelBlatt(); };   // Ziel „Gehen nachtragen“ aus „Zu tun“
+    api("GET", "/jahreswechsel").catch(() => null), gleitzeitVerlauf("woche", zeitHeuteIso(), true)]);   // nur Zusatz: ohne sie bleibt die Übersicht
+  const stempelZiel = hashTeile()[1] === "stempel";                    // Ziel „Gehen nachtragen“ aus „Zu tun“
+  window.nachher = () => { gzVerlaufEinpassen(); if (stempelZiel) { history.replaceState(history.state, "", "#/start"); stempelBlatt(); } };
   zutunZahl(zt);
   stempelDaten = st; stempelDaten.t0 = Date.now(); stempelAnzeige();
   const wahl = await einrichtungHtml();
+  const qa = await quoteAmpelLaden(j, m);
   if (!wahl) gehenVergessenPruefen();                                 // nicht neben der Karte „Erster Start“ (die Grundlage sieht sie erst nach dem Zeichnen)
   const u = ja.urlaub, jp = ja.jahr_prognose;
   const tagHeute = wo.tage.find(x => x.datum === iso(j, m, heute.getDate())) || {datum: iso(j, m, heute.getDate())};   // Kachel und Karte Heute
   const langes = heute.toLocaleDateString("de-DE", {weekday: "long", day: "numeric", month: "long"});
-  UEBERSICHT_LIVE = {};
   const mq = mo.rot ? "rot" : "";
   const warnungen = {};
   ZUTUN_IDS = (zt?.eintraege || []).map(e => e?.id);
   const quoteInKarte = ZUTUN_IDS.includes("quote-grenze") || ZUTUN_IDS.includes("quote-monat");   // Prognose und Monat über der Grenze stehen dann in der Karte
   if (!quoteInKarte && mitGrenze() && jp && jp.status === "ueber") warnungen.jahr = `<a href="#/horest" class="warn">${WARN_ZEICHEN}Jahres-Prognose über ${KONFIG.ho_grenze} % (${jp.quote_ende}): ${jp.buero_reicht_nicht ? "auch mit Büro an allen restlichen Tagen nicht mehr auszugleichen" : `Es fehlen noch ${tage(jp.noetig_tage)} Büro`}</a>`;
   if (!quoteInKarte && mitGrenze() && mo.rot) warnungen.monat = `<a href="#/monat" class="warn">${WARN_ZEICHEN}Diesen Monat über ${KONFIG.ho_grenze} % HO (${mo.text.quote})</a>`;
-  const jr = jp ? `<div class="ring-klein">${ring(ja.gesamt.quote, ja.text.quote, ja.rot)}</div>` : "";
   const angebot = DEMO?.angebot ? `<div class="card kachel breit demo-angebot"><span>Noch keine Einträge</span><div><b class="gross">Erst einmal ausprobieren?</b><small>Die Demo füllt eine getrennte Beispiel-Datenbank mit zufälligen Beispieltagen, passend zu deinen Regeln. Deine echten Daten bleiben leer und unberührt.</small></div>
       <div class="knoepfe"><button class="prim" ${kl("demoStart")}>Mit Beispieldaten ausprobieren</button><a class="btn" href="#/einstellungen/arbeitszeit">Eigene Regeln einrichten</a></div></div>` : "";
   const stand = uebersichtLesen();
   const teile = {
-    monat: einOrt() ? "" : `<div class="card kachel klickbar quote">${kachelKopf(MONATE[m - 1], mitGrenze() ? "horest" : "monat")}<div class="ring-klein">${ring(mo.summe.quote, mo.text.quote, mo.rot)}</div>
-      <small>${einheitFest(mo.text.ho)} HO<br>${einheitFest(mo.text.dst)} Büro${mitGrenze() ? `<br>noch ${einheitFest(ho.monat_block.rest)} HO möglich<br>(${einheitFest(tage(ho.monat_block.rest_tage))} und ${einheitFest(ho.monat_block.rest_tage_std)})` : ""}</small></div>`,
-    jahr: einOrt() ? "" : `<div class="card kachel klickbar quote">${kachelKopf(`Jahr ${j}`, "jahr")}${jr}<small>${jp && mitGrenze() ? `Prognose Jahresende <b class="${jp.status === "ueber" ? "rot" : ""}">${einheitFest(jp.quote_ende)}</b><br>${jp.status === "ueber" ? `${einheitFest(jp.reserve + " Std.")} zu viel HO` : `${einheitFest(jp.reserve + " Std.")} (${einheitFest(tage(jp.reserve_tage))})<br>Luft bis ${KONFIG.ho_grenze}\u00a0%`}` : `${einheitFest(ja.text.ho)} HO<br>${einheitFest(ja.text.dst)} Büro`}</small></div>`,
+    monat: einOrt() ? "" : `<div class="card kachel klickbar quote">${quoteKopfHtml(mo.summe.quote, mo.text.quote, mo.rot, kachelKopf(MONATE[m - 1], mitGrenze() ? "horest" : "monat"),
+      `<small>${einheitFest(mo.text.ho)} HO<br>${einheitFest(mo.text.dst)} Büro${mitGrenze() ? `<br>noch ${einheitFest(ho.monat_block.rest)} HO möglich<br>(${einheitFest(tage(ho.monat_block.rest_tage))} und ${einheitFest(ho.monat_block.rest_tage_std)})` : ""}</small>`)}</div>`,
+    jahr: einOrt() ? "" : `<div class="card kachel klickbar quote">${quoteKopfHtml(ja.gesamt.quote, ja.text.quote, ja.rot, kachelKopf(`Jahr ${j}`, "jahr"), `<small>${jp && mitGrenze() ? `Prognose Jahresende <b class="${jp.status === "ueber" ? "rot" : ""}">${einheitFest(jp.quote_ende)}</b><br>${jp.status === "ueber" ? `${einheitFest(jp.reserve + " Std.")} zu viel HO` : `${einheitFest(jp.reserve + " Std.")} (${einheitFest(tage(jp.reserve_tage))})<br>Luft bis ${KONFIG.ho_grenze}\u00a0%`}` : `${einheitFest(ja.text.ho)} HO<br>${einheitFest(ja.text.dst)} Büro`}</small>`, "", !!jp)}</div>`,
     warnung_monat: warnungKarte(warnungen.monat),
     warnung_jahr: warnungKarte(warnungen.jahr),
     zutun: zutunKarte(zt),                                                                         // enthält auch „Attest fehlt“ (früher eigene Warnung hier)
     jahreswechsel: jahreswechselKarte(jwAntwort),
-    tag: heuteKachel(tagHeute, wo.tagesziel, vTag),
-    woche: wocheKachel(wo, kw, vWoche),
+    tag: heuteKachel(tagHeute, wo.tagesziel),
+    woche: wocheKachel(wo, kw),
     gleitzeit: gleitzeitKachel(gz, gv),
     urlaub: urlaubKachel(u),
     freizeit: kachel("Freizeitkonto", `<span class="saldo ${saldoKlasse(gz.freizeit_min)}">${gz.freizeit}</span>`, FREIZEIT_TEXT, "woche", "klein", "freizeit"),
+    quote: quoteKachel(qa),
     krank: kachel("Krank " + j, einheitFest(tage(kr.kranktage)), krankKachelZusatz(kr), "krank", "klein", "krank"),
   };
   return `<div class="dash">
@@ -3204,7 +3558,9 @@ function jahresPrognoseAufklapp(p) {
 // ---- Monat
 async function seiteMonat() {
   const d = zeitAnkommen();
-  const m = await api("GET", `/monat/${jahr}/${monat}`);
+  const [m, verlauf] = await Promise.all([api("GET", `/monat/${jahr}/${monat}`), gleitzeitVerlauf("monat", d)]);   // Verlauf: letzte 3 Monate (Wunsch 25.11.2026)
+  // Der Verlauf ist ein eigenes Feld im Raster, nicht Teil der klebenden Kennzahlen-Spalte: mit ihm passte sie bei 1920 × 900 nicht mehr ins Fenster
+  const qa = await quoteAmpelLaden(jahr, monat);
   const t = m.text, s = m.summe;
   const heuteIso = zeitHeuteIso();
   let kwAlt = null, woche = [], html = "";
@@ -3221,32 +3577,27 @@ async function seiteMonat() {
     const kw = isoKw(new Date(+z.datum.slice(0, 4), +z.datum.slice(5, 7) - 1, z.tag));
     if (kw !== kwAlt) { wocheZu(); html += `<div class="kw"><span>KW ${kw}</span>@@KW${z.datum}@@</div>`; kwAlt = kw; }
     woche.push(z);
-    const chips = tagChips(z), info = tagInfo(z);
-    const klasse = ["tag", z.frei ? "frei" : "", z.datum === heuteIso ? "heute" : ""].join(" ");
-    html += `<div class="${klasse}" data-d="${z.datum}"><div class="dat"><b>${z.tag}</b><small>${z.wt}</small></div>
-      <div class="mitte"><div class="zeiten">${chips || (z.frei ? "" : `<span class="leer-tag">${z.soll ? "noch nichts eingetragen" : ""}</span>`)}</div>${info ? `<div class="info">${esc(info)}</div>` : ""}</div>
-      <div class="ist">${z.ist_soll_min ? zeitText(z.ist_soll_min) : ""}${z.soll_konto_min > 0 ? `<small>Soll ${zeitText(z.soll_konto_min)}</small>` : ""}</div></div>`;
+    html += tagZeileHtml(z, heuteIso, saldoKlasse, false, true);
   }
   wocheZu();
   window.monatDaten = m; window.famAktiv = m.familientage_aktiv;
   window.nachher = () => {
-    zeitSpalte(); monatKlebt();
+    zeitSpalte(); zeitTagSprung(); monatKlebt(); gzVerlaufEinpassen();
     if (window.scrollHeute) { window.scrollHeute = false; const h = document.querySelector(".tag.heute, .kz.heute"); if (h) h.scrollIntoView({block: "center", behavior: "smooth"}); else window.scrollTo({top: 0, behavior: "smooth"}); }
   };
   const rot = m.rot, q = s.quote;
   const ansicht = speicher.l("ho_monat_ansicht", "kalender");
-  const umschalter = `<div class="seg segmitte" role="group" aria-label="Ansicht"><button class="${ansicht === "kalender" ? "on" : ""}" ${kl("monatAnsicht", "kalender")}>Raster</button><button class="${ansicht === "liste" ? "on" : ""}" ${kl("monatAnsicht", "liste")}>Liste</button></div>`;
+  const umschalter = segHtml([["kalender", "Raster"], ["liste", "Liste"]], ansicht, {klasse: "segmitte", label: "Ansicht", klick: "monatAnsicht"});
   const bewertung = monatBewertung(s, rot);
-  return `<div class="kopf"><button ${kl("zeitBlaettern", -1)} aria-label="Vorheriger Monat">‹</button><h2>${m.name} ${m.jahr}</h2>
-    <div class="kopf-rechts"><span class="kal-wahl"><button type="button" ${kl("zeitKalender", "#m-kal")} aria-label="Monat im Kalender wählen">${sym("monat")}</button><input id="m-kal" type="date" value="${d}" ${ZEIT_KAL_GRENZEN} data-wechsel="zeitKalenderDatum" tabindex="-1" aria-hidden="true"></span><button class="heute-knopf" ${kl("zeitHeute")}>Heute</button><button ${kl("zeitBlaettern", 1)} aria-label="Nächster Monat">›</button></div></div>
+  return `${kopfHtml("monat", `${m.name} ${m.jahr}`, "m-kal", d)}
     <div class="monat-grid"><div class="rechts">${zeitLeerHtml(m.tage)}${umschalter}<div class="card">${ansicht === "kalender" ? rasterHtml(m, heuteIso) : html}</div></div>
-    <div class="links"><div class="card"><div class="hero">${einOrt() ? "" : ring(q, t.quote, rot)}
-    <div class="txt"><b>${m.name}</b><span>${einOrt() ? "" : `${t.ho}\u00a0HO · ${t.dst}\u00a0Büro<br>`}Ist-Zeit ${t.ist}${auffuellZeile(m)}</span>${mitGrenze() ? `<span class="chip ${rot ? "rot" : ""}">${letztesWortAmStueck(bewertung)}</span>` : ""}</div></div>${mitGrenze() ? prognoseHtml(m.monat_prognose) + jahresPrognoseAufklapp(m.jahr_prognose) : ""}
+    <div class="links"><div class="card">${quoteKopfHtml(q, t.quote, rot, `<b>${m.name}</b>`, `<span>${einOrt() ? "" : `${t.ho}\u00a0HO · ${t.dst}\u00a0Büro<br>`}Ist-Zeit ${t.ist}${auffuellZeile(m)}</span>`,
+      mitGrenze() ? `<span class="chip ${rot ? "rot" : ""}">${letztesWortAmStueck(bewertung)}</span>` : "", !einOrt())}${quoteAmpelHtml(qa)}${mitGrenze() ? prognoseHtml(m.monat_prognose) + jahresPrognoseAufklapp(m.jahr_prognose) : ""}
     <div class="raster">${einOrt() ? "" : `<div class="ho"><b>${s.ho_tage}</b><span>Tage HO</span></div><div class="ds"><b>${s.dst_tage}</b><span>Tage Büro</span></div>`}<div><b>${s.soll_tage}</b><span>Arbeitstage (Soll)</span></div>
     <div><b>${s.urlaub}</b><span>Urlaub</span></div><div${md("krank")}><b>${s.krank}</b><span>Krank</span></div><div${md("gleittage")}><b>${s.gleittage}</b><span>Gleittage</span></div></div>
-    <div class="schnell monat-schnell"><button class="prim"${md("stempel")} ${kl("stempelBlatt")}>Stempeluhr</button><button ${kl("heuteEintragen")}>Heute eintragen</button><a class="btn pdf" href="api/monat/${jahr}/${monat}.pdf">Monats-PDF</a></div></div></div></div>`;
+    <div class="schnell monat-schnell"><button class="prim"${md("stempel")} ${kl("stempelBlatt")}>Stempeluhr</button><button ${kl("heuteEintragen")}>Heute eintragen</button><a class="btn pdf" href="api/monat/${jahr}/${monat}.pdf">Monats-PDF</a></div></div></div>${verlauf}</div>`;
 }
-// Letztes Wort am Stück: „80-%-Grenze“ brach sonst am Bindestrich um (Terminal, 375 px).
+// Letztes Wort am Stück: „80-%-Grenze“ brach sonst am Bindestrich um (375 px, große Schrift).
 const letztesWortAmStueck = s => s.replace(/ (\S+)$/, ' <span class="am-stueck">$1</span>');
 // Bewertung der Quote im Monat (nur aus Feldern des Kerns): genau auf der Grenze „An der …-%-Grenze“ (summe.an_grenze, U10), sonst darüber oder darunter.
 function monatBewertung(s, rot) {
@@ -3301,23 +3652,22 @@ function wochenzielHtml(z, laufend) {
 // ---- Woche mit Gleitzeit-Konto
 async function seiteWoche() {
   const d = zeitAnkommen(), [kj, kw] = kwJahr(isoZuDatum(d));
-  const w = await api("GET", `/woche/${kj}/${kw}`), verlauf = await gleitzeitVerlauf(d.slice(0, 4));
+  const w = await api("GET", `/woche/${kj}/${kw}`), verlauf = await gleitzeitVerlauf("woche", d);   // letzte 3 Wochen (Wunsch 25.11.2026), das Jahr steht auf der Seite Jahr
   window.monatDaten = {tage: w.tage}; window.famAktiv = w.familientage_aktiv;
-  window.nachher = hashTeile()[1] === "gleitzeit" ? () => { zeitSpalte(); gzVerlaufEinpassen(); wocheGleitzeitZeigen(d); } : () => { zeitSpalte(); gzVerlaufEinpassen(); };
+  window.nachher = hashTeile()[1] === "gleitzeit" ? () => { zeitSpalte(); zeitTagSprung(); gzVerlaufEinpassen(); wocheGleitzeitZeigen(d); } : () => { zeitSpalte(); zeitTagSprung(); gzVerlaufEinpassen(); };
   const heuteIso = zeitHeuteIso();
   const vorz = saldoKlasse;
   const zeilen = w.tage.map(z => tagZeileHtml(z, heuteIso, vorz)).join("");
   const zeitraumText = (von, bis) => `${von.slice(8)}.${von.slice(5, 7)}.${von.slice(0, 4) === bis.slice(0, 4) ? "" : von.slice(0, 4)} – ${bis.slice(8)}.${bis.slice(5, 7)}.${bis.slice(0, 4)}`;   // Jahr nur einmal, außer über den Jahreswechsel
   const t = w.tage.find(z => z.datum === heuteIso);
   const tagKarte = t ? tagKarteHtml(t, vorz, `Heute, ${t.wt} ${t.tag}.`) : "";   // nur in der laufenden Woche
-  return `<div class="kopf"><button ${kl("zeitBlaettern", -1)} aria-label="Vorherige Woche">‹</button><h2 class="kw-kopf"><span class="kw-nr">KW ${w.kw}</span> <span class="kw-zeit">${zeitraumText(w.von, w.bis)}</span></h2>
-    <div class="kopf-rechts"><span class="kal-wahl"><button type="button" ${kl("zeitKalender", "#w-kal")} aria-label="Woche im Kalender wählen">${sym("monat")}</button><input id="w-kal" type="date" value="${d}" ${ZEIT_KAL_GRENZEN} data-wechsel="zeitKalenderDatum" tabindex="-1" aria-hidden="true"></span><button class="heute-knopf" ${kl("zeitHeute")}>Heute</button><button ${kl("zeitBlaettern", 1)} aria-label="Nächste Woche">›</button></div></div>
+  return `${kopfHtml("woche", `<span class="kw-nr">KW ${w.kw}</span> <span class="kw-zeit">${zeitraumText(w.von, w.bis)}</span>`, "w-kal", d)}
     ${zeitLeerHtml(w.tage)}
-    <div class="gitter paar">${tagKarte}<div class="card"><h2>${w.heute_in_woche ? "Diese Woche" : `Woche ${w.kw}`}</h2>${wochenzielHtml(w.wochenziel, w.heute_in_woche)}<div class="zeile gr"><span>Ist</span><b>${zeitText(w.ist_soll_min)}</b></div><div class="zeile gr"><span>Soll der ganzen Woche</span><b>${zeitText(w.soll_woche_min)}</b></div>
-      <div class="zeile gr"><span>Saldo der Woche</span><b class="saldo ${vorz(w.saldo_woche_min)}">${zeitText(w.saldo_woche_min, true)}</b></div>
-      <div class="zeile gr"><span>Saldo bis ${w.heute_in_woche ? "heute" : "Wochenende"}</span><b class="saldo ${vorz(w.saldo_min)}">${w.saldo}</b></div></div></div>
-    <div class="gitter paar"><div class="card"${md("gleitzeit")}><h2>Gleitzeit-Konto</h2><div class="zeile gr"><span>Am Anfang der Woche</span><b class="saldo ${saldoText(w.konto_anfang)}">${w.konto_anfang}</b></div><div class="zeile gr"><span>${w.heute_in_woche ? "Stand heute" : "Am Ende der Woche"}</span><b class="saldo ${vorz(w.konto_min)}">${w.konto}</b></div>${w.kappung ? `<p class="hinweis kappung">${esc(w.kappung)}</p>` : ""}</div>
-    <div class="card"${md("freizeit")}><h2>Freizeitkonto</h2><div class="zeile gr"><span>In dieser Woche</span><b class="saldo ${vorz(w.freizeit_woche_min)}">${w.freizeit_woche}</b></div><div class="zeile gr"><span>${w.heute_in_woche ? "Stand heute" : "Am Ende der Woche"}</span><b class="saldo ${vorz(w.freizeit_konto_min)}">${w.freizeit_konto}</b></div></div></div>
+    <div class="gitter paar">${tagKarte}<div class="card"><h2>${w.heute_in_woche ? "Diese Woche" : `Woche ${w.kw}`}</h2>${wochenzielHtml(w.wochenziel, w.heute_in_woche)}${wertZeile("Ist", zeitText(w.ist_soll_min))}${wertZeile("Soll der ganzen Woche", zeitText(w.soll_woche_min))}
+      ${wertZeile("Saldo der Woche", zeitText(w.saldo_woche_min, true), `saldo ${vorz(w.saldo_woche_min)}`)}
+      ${wertZeile(`Saldo bis ${w.heute_in_woche ? "heute" : "Wochenende"}`, w.saldo, `saldo ${vorz(w.saldo_min)}`)}</div></div>
+    <div class="gitter paar">${kontoKarte("gleitzeit", `${wertZeile("Am Anfang der Woche", w.konto_anfang, `saldo ${saldoText(w.konto_anfang)}`)}${wertZeile(w.heute_in_woche ? "Stand heute" : "Am Ende der Woche", w.konto, `saldo ${vorz(w.konto_min)}`)}${w.kappung ? `<p class="hinweis kappung">${esc(w.kappung)}</p>` : ""}`)}
+    ${kontoKarte("freizeit", `${wertZeile("In dieser Woche", w.freizeit_woche, `saldo ${vorz(w.freizeit_woche_min)}`)}${wertZeile(w.heute_in_woche ? "Stand heute" : "Am Ende der Woche", w.freizeit_konto, `saldo ${vorz(w.freizeit_konto_min)}`)}`)}</div>
     ${verlauf}
     <div class="card">${zeilen}</div>
     <p class="hinweis">Soll zählt an Arbeitstagen, außer bei Urlaub und Krank. Ein Gleittag bucht das Tagessoll vom Gleitzeit-Konto ab. Arbeit am Wochenende oder an Feiertagen zählt zum Freizeitkonto, nicht zur Gleitzeit. Abgebaut wird es mit der Art „Freizeitausgleich“. Beide Konten kannst du unter „Einstellungen“ auf deinen echten Stand setzen.</p>`;
@@ -3362,7 +3712,7 @@ function restKarte(b, id, p) {
 // Seite „HO-Spielraum“: Karten für Monat und Jahr und die Jahres-Prognose.
 async function seiteHoRest() {
   const r = await api("GET", `/horest/${jahr}/${monat}`);
-  return `<div class="kopf"><button ${kl("monatBlaettern", -1, false)} aria-label="Vorheriger Monat">‹</button><h2>${MONATE[monat - 1]} ${jahr}</h2><div class="kopf-rechts"><span class="kal-wahl"><button type="button" ${kl("monatKalender")} aria-label="Monat im Kalender wählen">${sym("monat")}</button><input id="m-kal" type="date" value="${jahr}-${pad(monat)}-01" data-wechsel="monatDatum" tabindex="-1" aria-hidden="true"></span><button class="heute-knopf" ${kl("zuHeute")}>Heute</button><button ${kl("monatBlaettern", 1, false)} aria-label="Nächster Monat">›</button></div></div>
+  return `${kopfHtml("monat", `${MONATE[monat - 1]} ${jahr}`, "h-kal", `${jahr}-${pad(monat)}-01`, KOPF_SPIELRAUM)}
     <div class="gitter paar">${restKarte(r.monat_block, "m", r.monat_prognose)}${restKarte(r.jahr_block, "j", r.jahr_prognose)}</div>${jahresPrognoseHtml(r.jahr_prognose)}`;
 }
 
@@ -3384,29 +3734,27 @@ function jahrBalken(j) {
 }
 // Seite „Jahr“ (Jahresrückblick): eine Karte mit Ring, Summen und Säulen je Monat, darunter die Tabelle der Monate mit Jahres-PDF und der Gleitzeit-Verlauf (woche.js).
 async function seiteJahr() {
-  const [j, verlauf] = await Promise.all([api("GET", `/jahr/${jahr}`), gleitzeitVerlauf(jahr)]);
+  const [j, verlauf] = await Promise.all([api("GET", `/jahr/${jahr}`), gleitzeitVerlauf("jahr", jahr)]);
   window.nachher = gzVerlaufEinpassen;
   const start = j.gesamt.start ? `<p class="hinweis">Stand bis ${standBis(j.gesamt.start.ab)} (Startwerte)</p>` : "";
   // Eine Zeile der Jahrestabelle; mit Monat ist sie antippbar und öffnet den Monat. Vor Beginn der Erfassung steht statt der Werte (alle 0) der Satz, nicht nur Grau.
-  const werte = (s, t, rot) => einOrt() ? `<td>${t.ist}</td>` : `<td class="${rot ? "rot" : ""}">${t.quote}${rot ? '<span class="sr"> über der Grenze</span>' : ""}</td><td>${t.ho}</td><td>${t.dst}</td><td>${s.ho_tage}</td><td>${s.dst_tage}</td>`;
-  const zeile = (name, s, t, rot, m, vor) => `<tr class="${m ? "klick" : ""}${vor ? " vor-beginn" : ""}" ${m ? kl("monatOeffnen", m) : ""}><td>${name}</td>${vor ? `<td colspan="${einOrt() ? 3 : 7}">${VOR_BEGINN}</td>` : `${werte(s, t, rot)}<td>${s.urlaub}</td><td>${s.soll_tage}</td>`}</tr>`;
-  return `<div class="card jahr-karte"><h2>Jahresübersicht ${jahr}</h2><div class="hero">${einOrt() ? "" : ring(j.gesamt.quote, j.text.quote, j.rot)}
-    <div class="txt"><b>${jahr} gesamt</b><span>${einOrt() ? "" : `${j.text.ho} HO · ${j.text.dst} Büro<br>`}Ist-Zeit ${j.text.ist}</span></div></div>${start}
+  const werte = (s, t, rot) => einOrt() ? `<td>${t.ist}</td>` : `<td class="${rot ? "rot" : ""}">${t.quote}${rot ? '<span class="sr"> über der Grenze</span>' : ""}</td><td>${t.ho}</td><td>${t.dst}</td><td class="t">${s.ho_tage}</td><td class="t">${s.dst_tage}</td>`;
+  const zeile = (name, s, t, rot, m, vor) => `<tr class="${m ? "klick" : ""}${vor ? " vor-beginn" : ""}" ${m ? kl("monatOeffnen", m) : ""}><td>${name}</td>${vor ? `<td colspan="${einOrt() ? 3 : 7}">${VOR_BEGINN}</td>` : `${werte(s, t, rot)}<td class="u">${s.urlaub}</td><td>${s.soll_tage}</td>`}</tr>`;
+  return `<div class="card jahr-karte"><h2>Jahresübersicht ${jahr}</h2>${quoteKopfHtml(j.gesamt.quote, j.text.quote, j.rot, `<b>${jahr} gesamt</b>`, `<span>${einOrt() ? "" : `${j.text.ho} HO · ${j.text.dst} Büro<br>`}Ist-Zeit ${j.text.ist}</span>`, "", !einOrt())}${start}
     <div class="raster">${einOrt() ? "" : `<div class="ho"><b>${j.gesamt.ho_tage}</b><span>Tage HO</span></div><div class="ds"><b>${j.gesamt.dst_tage}</b><span>Tage Büro</span></div>`}<div><b>${j.gesamt.urlaub}</b><span>Urlaub</span></div><div${md("krank")}><b>${j.gesamt.krank}</b><span>Krank</span></div></div>
     ${einOrt() ? "" : jahrBalken(j)}</div>
-    <div class="card"><div class="tbl jahr-tbl"><table class="jahr-tab" aria-label="Monate ${jahr}"><tr><th>Monat</th>${einOrt() ? "<th>Ist</th>" : "<th>Quote</th><th>HO</th><th>Büro</th><th>T<br>HO</th><th>T<br>Büro</th>"}<th>Url</th><th>Soll</th></tr>
-    ${j.monate.map(m => zeile(m.name.slice(0, 3), m.summe, m.text, m.rot, m.monat, m.vor_beginn)).join("")}${startZeile(j.gesamt.start)}${zeile("<b>Summe</b>", j.gesamt, j.text, j.rot, 0, false)}</table></div>
-    <p class="hinweis">${einOrt() ? "Ist = gearbeitete Stunden." : "HO und Büro = Stunden im Homeoffice und im Büro. T HO = Tage nur im Homeoffice, T Büro = Tage im Büro (auch mit HO am selben Tag)."} Soll = Arbeitstage laut Abschnitt.</p>
+    <div class="card"><div class="tbl jahr-tbl"><table class="jahr-tab" aria-label="Monate ${jahr}"><tr><th>Monat</th>${einOrt() ? "<th>Ist</th>" : '<th>Quote</th><th>HO</th><th>Büro</th><th class="t">T<br>HO</th><th class="t">T<br>Büro</th>'}<th class="u">Url</th><th>Soll</th></tr>
+    ${j.monate.map(m => zeile(m.name.slice(0, 3), m.summe, m.text, m.rot, m.monat, m.vor_beginn)).join("")}${startZeile(j.gesamt.start)}${zeile("<b>Summe</b>", j.gesamt, j.text, j.rot, 0, false)}</table><p class="hinweis">${einOrt() ? "Ist = gearbeitete Stunden." : 'HO und Büro = Stunden im Homeoffice und im Büro. <span class="t">T HO = Tage nur im Homeoffice, T Büro = Tage im Büro (auch mit HO am selben Tag).</span>'} Soll = Arbeitstage laut Abschnitt.</p></div>
     <div class="schnell"><a class="btn pdf"${md("ex_pdf")} href="api/jahr/${jahr}.pdf">Jahres-PDF</a></div></div>${verlauf}`;
 }
 
 // Zeile „Startwerte bis TT.MM.JJJJ“ vor der Summe (R6): Die Jahressumme enthält die Startwerte, ohne diese Zeile ginge sie nicht auf.
-// Startwerte haben keine Tage und kein Soll, darum „–“ statt Quote, Tagen und Soll. Ohne Startwerte leer.
+// Startwerte haben keine Tage und kein Soll, darum „–“ statt Quote, Tagen und Soll; die Tage-Zellen tragen wie die Spalten T HO/T Büro die Klasse t, Url die Klasse u (große Schrift, jahr.css). Ohne Startwerte leer.
 function startZeile(st) {
   if (!st) return "";
-  const name = `Startwerte bis ${standBis(st.ab)}`, OHNE = "<td>–</td>";
+  const name = `Startwerte bis ${standBis(st.ab)}`, OHNE = "<td>–</td>", OHNE_T = '<td class="t">–</td>';
   return einOrt() ? `<tr class="start-zeile"><td>${name}</td><td>${zeitText(st.ho_min + st.dst_min)}</td><td>${st.urlaub}</td>${OHNE}</tr>`
-    : `<tr class="start-zeile"><td colspan="2">${name}</td><td>${zeitText(st.ho_min)}</td><td>${zeitText(st.dst_min)}</td>${OHNE}${OHNE}<td>${st.urlaub}</td>${OHNE}</tr>`;
+    : `<tr class="start-zeile"><td colspan="2">${name}</td><td>${zeitText(st.ho_min)}</td><td>${zeitText(st.dst_min)}</td>${OHNE_T}${OHNE_T}<td class="u">${st.urlaub}</td>${OHNE}</tr>`;
 }
 // Öffnet einen Monat des gewählten Jahres.
 function monatOeffnen(m) { monat = m; location.hash = "#/monat/" + jahr + "/" + m; }
@@ -3467,18 +3815,16 @@ async function urlaubKarten() {
   const u = await api("GET", `/urlaub/${jahr}`), bruecken = await brueckenKarten(u);
   const auto = k => k.automatisch ? ` <small>(${komma(k.automatisch)} automatisch, ab ${de(k.automatisch_ab)})</small>` : "";
   const konten = u.konten.map(k => `<div class="zeile"><span>aus ${k.herkunft}: ${tage(k.tage)}, genommen ${komma(k.genommen)}${auto(k)}${k.nutzbar ? "" : " <small>(in " + jahr + " nicht mehr nutzbar)</small>"}</span>
-    <span><b>${komma(k.rest)}</b>${k.von_hand ? ` <button ${kl("kontoLoeschen", k.herkunft)} class="gef" aria-label="Konto aus ${k.herkunft} entfernen">✕</button>` : ""}</span></div>`).join("") || `<div class="leer">Noch kein angesparter Urlaub eingetragen.</div>`;
+    <span><b>${komma(k.rest)}</b>${k.von_hand ? ` <button ${kl("kontoLoeschen", k.herkunft)} class="gef" aria-label="Konto aus ${k.herkunft} entfernen">✕</button>` : ""}</span></div>`).join("") || leerHtml("Noch kein angesparter Urlaub eingetragen.");
   window.urlaubDaten = u;
   const ansicht = speicher.l("ho_urlaub_ansicht", "einfach");
-  const umschalter = `<div class="seg segmitte"><button class="${ansicht === "einfach" ? "on" : ""}" ${kl("urlaubAnsicht", "einfach")}>Einfach</button><button class="${ansicht === "erweitert" ? "on" : ""}" ${kl("urlaubAnsicht", "erweitert")}>Erweitert</button></div>`;
+  const umschalter = segHtml([["einfach", "Einfach"], ["erweitert", "Erweitert"]], ansicht, {klasse: "segmitte", label: "Ansicht", klick: "urlaubAnsicht"});
   if (ansicht === "einfach") {
-    // Zeile mit Titel und Wert.
-    const z = (t, v, k) => `<div class="zeile gr"><span>${t}</span><b class="${k || ""}">${v}</b></div>`;
     const verf = u.rest;
-    return `${umschalter}<div class="gitter"><div class="card"><h2>Urlaubstage ${jahr}</h2>${z("Gesamt", komma(u.anspruch + u.uebertrag))}${zusatzZeile(u, z)}
-      <p class="hinweis">Gesamt = Jahresanspruch ${komma(u.anspruch)} + Übertrag ${komma(u.uebertrag)} aus ${jahr - 1}.</p>${z("Verbraucht", komma(u.genommen))}${fristZeilen(u, z)}${z("Verfügbar", komma(verf), verf < 0 ? "rot" : "")}</div>
-      <div class="card"${md("gleittage")}><h2>Gleittage ${jahr}</h2>${z("Verbraucht", u.gleittage)}${z("Verfügbar", `${u.gleittage_rest} von ${u.gleittage_max}`, u.gleittage_rest === 0 ? "rot" : "")}</div>
-      ${u.familientage_aktiv ? `<div class="card"${md("familientage")}><h2>Familientage ${jahr}</h2>${z("Verbraucht", u.familientage)}${z("Verfügbar", `${u.familientage_rest} von ${u.familientage_max}`, u.familientage_rest === 0 ? "rot" : "")}</div>` : ""}</div>
+    return `${umschalter}<div class="gitter"><div class="card"><h2>Urlaubstage ${jahr}</h2>${wertZeile("Gesamt", komma(u.anspruch + u.uebertrag))}${zusatzZeile(u, wertZeile)}
+      <p class="hinweis">Gesamt = Jahresanspruch ${komma(u.anspruch)} + Übertrag ${komma(u.uebertrag)} aus ${jahr - 1}.</p>${wertZeile("Verbraucht", komma(u.genommen))}${fristZeilen(u, wertZeile)}${wertZeile("Verfügbar", komma(verf), verf < 0 ? "rot" : "")}</div>
+      <div class="card"${md("gleittage")}><h2>Gleittage ${jahr}</h2>${wertZeile("Verbraucht", u.gleittage)}${wertZeile("Verfügbar", `${u.gleittage_rest} von ${u.gleittage_max}`, u.gleittage_rest === 0 ? "rot" : "")}</div>
+      ${u.familientage_aktiv ? `<div class="card"${md("familientage")}><h2>Familientage ${jahr}</h2>${wertZeile("Verbraucht", u.familientage)}${wertZeile("Verfügbar", `${u.familientage_rest} von ${u.familientage_max}`, u.familientage_rest === 0 ? "rot" : "")}</div>` : ""}</div>
       <p class="hinweis nach-karten">Anspruch, Übertrag und angesparten Urlaub änderst du unter „Erweitert“.</p>${bruecken}`;
   }
   return `${umschalter}<div class="card"><h2>Erholungsurlaub ${jahr}</h2>
@@ -3522,7 +3868,7 @@ function brueckenKarte(j, liste) {
   const plan = modulAn("planung") && artAn("urlaub");
   const zeilen = liste.map((b, i) => plan
     ? `<button type="button" class="zeile bruecke" ${kl("brueckeEintragen", j, i)}>${esc(b.text)}</button>`
-    : `<div class="zeile">${esc(b.text)}</div>`).join("") || `<div class="leer">Keine Brückentage mehr in ${j}.</div>`;
+    : `<div class="zeile">${esc(b.text)}</div>`).join("") || leerHtml(`Keine Brückentage mehr in ${j}.`);
   return `<div class="card"><h2>Brückentage ${j}</h2>${zeilen}${plan && liste.length ? `<p class="hinweis">Tippe auf einen Vorschlag, um den Urlaub einzutragen.</p>` : ""}</div>`;
 }
 // Öffnet das Blatt „Urlaub planen“ mit den Urlaubstagen des Brückentage-Vorschlags i im Jahr j.
@@ -3563,7 +3909,7 @@ async function seitePlanung() {
 // die Nummer data-i bleibt die in planZeiten (Löschen, Kalenderdatei).
 function planListe() {
   const sichtbar = planZeiten.map((x, i) => [x, i]).filter(([x]) => artAn(x.art));
-  if (!sichtbar.length) return `<div class="leer">Noch nichts geplant.</div>`;
+  if (!sichtbar.length) return leerHtml("Noch nichts geplant.");
   const nz = sichtbar.map(([x, i]) => `<div class="zeile plan-zeile"><label class="plan-wahl"><input type="checkbox" class="pl-haken" data-i="${i}" checked data-wechsel="planKalenderLink"><span><b>${planBereich(x)}</b><br><small>${x.titel} · ${tage(x.tage)}</small></span></label>
     <button class="gef" ${kl("planLoeschen", i)} aria-label="Zeitraum löschen">✕</button></div>`).join("");
   return `${nz}<div class="knoepfe"><a class="btn prim" id="pl-kal" href="#">In Kalender übernehmen</a><a class="btn" id="pl-ics" href="#">Kalender (.ics)</a><button ${kl("planAlle", true)}>Alle</button><button ${kl("planAlle", false)}>Keine</button></div>
@@ -3628,7 +3974,7 @@ async function planBlattZeichnen() {
   const arten = planArten(planFamilie);
   if (!arten.some(a => a[0] === planArt)) planArt = arten[0]?.[0] || "urlaub";
   blatt(`<h3>Urlaub planen</h3>
-    <span class="feld-titel" id="pl-art-titel">Art</span><div class="seg" id="pl-art" role="group" aria-labelledby="pl-art-titel">${arten.map(([k, t]) => `<button type="button" data-v="${k}" class="${planArt === k ? "on" : ""}" aria-pressed="${planArt === k}" ${kl("planArtWaehlen", k)}>${t}</button>`).join("")}</div>
+    <span class="feld-titel" id="pl-art-titel">Art</span>${segHtml(arten, planArt, {id: "pl-art", beschriftet: "pl-art-titel", klick: "planArtWaehlen"})}
     <div class="plan-monat"><button type="button" id="pl-zurueck" aria-label="Vorheriger Monat">‹</button><b>${MONATE[m.monat - 1]} ${m.jahr}</b><button type="button" id="pl-vor" aria-label="Nächster Monat">›</button></div>
     ${planRaster(m)}<p class="hinweis" id="pl-wahl">${planWahlText()}</p>
     <div id="pl-vorschau" class="plan-vorschau" aria-live="polite"></div><div id="pl-fehler"></div>
@@ -3737,7 +4083,7 @@ async function seiteKrank() {
   const k = await api("GET", `/krank/${jahr}`);
   // Text und Farbe je Status einer Phase; jeder Wert aus bericht.KRANK_STATUS braucht einen Eintrag, sonst bricht die Seite.
   const STATUS = {attest: ["Attest abgegeben", "ok"], ohne: ["ohne Attest (bis 3 Tage)", "mut"], fehlt: ["Attest fehlt", "rot"], dienst: ["Krank im Dienst", "mut"], frei: ["zählt nicht (kein Arbeitstag)", "mut"]};
-  const karten = k.phasen.map(p => krankPhase(p, STATUS[p.status])).join("") || `<div class="leer">${k.liste.length ? "Seit Beginn der Erfassung keine Krankmeldungen." : `Keine Krankmeldungen in ${jahr}.`} Kranktage trägst du am Tag über „Art des Tages“ ein.</div>`;
+  const karten = k.phasen.map(p => krankPhase(p, STATUS[p.status])).join("") || leerHtml(`${k.liste.length ? "Seit Beginn der Erfassung keine Krankmeldungen." : `Keine Krankmeldungen in ${jahr}.`} Kranktage trägst du am Tag über „Art des Tages“ ein.`);
   const warn = k.attest_fehlt ? `<div class="card kachel warnungen"><span class="warn">${tage(k.attest_fehlt)} ohne Attest nach den ersten 3 Kranktagen. Bitte Attest-Datum eintragen.</span></div>` : "";
   return `<div class="krank-kacheln"><div class="card"><b>${k.kranktage}</b><span>Kranktage ${jahr}</span></div>${k.krank_start > 0 ? `<div class="card"><b>${k.krank_start}</b><span>aus Startwerten</span></div>` : ""}<div class="card"><b>${k.attest}</b><span>mit Attest</span></div>
     <div class="card"><b>${k.ohne_attest}</b><span>ohne Attest</span></div><div class="card"><b>${k.im_dienst}</b><span>Krank im Dienst</span><small>kein Kranktag</small></div></div>
@@ -3750,14 +4096,14 @@ async function seiteKrank() {
 // Zeiterfassung. © 2026 David Saluda. Alle Rechte vorbehalten. Erstellt mit Unterstützung von KI (Claude, Anthropic).
 // Seite „Steuer“ (Homeoffice-Übersicht): Jahreswerte (Quote, Stunden, Tage) zur Information, Krank- und Elternzeit-Zeiträume, Startwerte (R8).
 // Zeile mit Titel und Wert, beide maskiert.
-const steuerZeile = (t, v) => `<div class="zeile"><span>${esc(t)}</span><b>${esc(v)}</b></div>`;
+const steuerZeile = (t, v) => wertZeile(esc(t), esc(v), "", "zeile");
 // Ein Zeitraum (Kranktage oder Elternzeit): Von bis Bis mit Zahl der Tage, Hinweis über die Jahresgrenze; bei Krank Attest-Text und Abgabe-Datum.
 function steuerZeitraum(z) {
   const unter = [z.attest_datum ? `Attest abgegeben am ${esc(z.attest_datum)}` : "", esc(z.hinweis)].filter(Boolean).join(" · ");
   return `<div class="zeile zeitraum"><span>${esc(z.von)} bis ${esc(z.bis)} <span class="am-stueck">(${anzahl(z.tage, "Tag", "Tage")})</span>${unter ? `<br><small>${unter}</small>` : ""}</span>${z.attest_text ? `<b>${esc(z.attest_text)}</b>` : ""}</div>`;
 }
 // Karte einer Liste von Zeiträumen mit Zahl im Titel; ohne Zeitraum „Keine.“.
-const steuerZeitraeume = (titel, liste) => `<div class="card"><h2>${titel} (${liste.length})</h2>${liste.map(steuerZeitraum).join("") || '<div class="leer">Keine.</div>'}</div>`;
+const steuerZeitraeume = (titel, liste) => `<div class="card"><h2>${titel} (${liste.length})</h2>${liste.map(steuerZeitraum).join("") || leerHtml("Keine.")}</div>`;
 // Block der Startwerte (nur im Jahr von „Erfassung gültig ab“): Stand bis zum Vortag, gleiche Zeilen wie bericht._start_zeilen.
 function steuerStart(s) {
   const st = s.start;
@@ -3794,7 +4140,7 @@ async function seiteSteuer() {
 const EXPORT_VORSCHAU = 5;                                       // Zeilen der Vorschau je Karte
 // Felder in exportWahl, die „Heute“ einer Karte zurücksetzt: Monat, Jahr der Homeoffice-Übersicht (nj), Jahr des Kalenders (kj).
 const EXPORT_HEUTE = {monat: ["j", "m"], nj: ["nj"], kj: ["kj"]};
-const FORMATE_MONAT = [["PDF", "pdf"], ["Word", "docx"], ["ODT", "odt"], ["ODS", "ods"], ["Markdown", "md"], ["Text", "txt"], ["JSON", "json"], ["XML", "xml"], ["CSV", "csv"]];
+const FORMATE_MONAT = [["PDF", "pdf"], ["Excel", "xlsx"], ["CSV", "csv"]];
 const KALENDER_OHNE = ["", "krank_dienst"];                    // Arten ohne Termin im Kalender (export.ICS_ARTEN)
 // Speichert den Schalter „Teilen statt Herunterladen“.
 function teilenSchalten(an) { try { localStorage.setItem(EIGEN + "ho_teilen", an ? "1" : "0"); } catch (e) {} }
@@ -3817,9 +4163,7 @@ function exportTabelle(kopf, zeilen) {
     <tbody>${zeilen.map(z => `<tr>${z.map(w => `<td>${esc(w)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
 }
 // Auswahl einer Karte mit Etikett und „Heute“ (feld aus EXPORT_HEUTE); wechsel ist der Name aus WECHSEL, data-feld sagt, welches Jahr.
-function exportAuswahl(id, etikett, wechsel, feld, werte, gewaehlt, was) {
-  return `<label for="${id}">${esc(etikett)}</label><div class="feld-heute"><select id="${id}" data-wechsel="${wechsel}" data-feld="${feld}">${werte.map(([w, t]) => `<option value="${w}"${w === gewaehlt ? " selected" : ""}>${esc(t)}</option>`).join("")}</select><button type="button" class="heute-knopf" ${kl("exportHeute", feld)}>Heute<span class="sr">: ${esc(was)}</span></button></div>`;
-}
+const exportAuswahl = (id, etikett, wechsel, feld, werte, gewaehlt, was) => auswahlHeute(id, etikett, werte, gewaehlt, wechsel, kl("exportHeute", feld), was, ` data-feld="${feld}"`);
 // Karte eines Exports; ohne erlaubten Format-Knopf fehlt sie ganz.
 function exportKarte(id, titel, wahl, vorschau, knoepfe) {
   return knoepfe ? `<section class="card" aria-labelledby="${id}-t"><h2 id="${id}-t">${esc(titel)}</h2>${wahl}<p class="vorschau-titel">Vorschau</p>${vorschau}${knoepfe}</section>` : "";
@@ -3860,10 +4204,10 @@ function teilenKarte() {
 // Seite „Export“: wählbar sind nur Monate und Jahre mit Einträgen; Vorschauen laden nur für Karten, die ein Modul erlaubt.
 async function seiteExport() {
   const mit = (await api("GET", "/zeitraeume")).monate, jahre = [...new Set(mit.map(x => +x.slice(0, 4)))];   // nur Monate und Jahre mit Einträgen, neueste zuerst
-  if (!mit.length) return `<div class="card"><h2>Export</h2><div class="leer">Noch keine Einträge. Sobald Tage erfasst sind, stehen hier die Auswertungen der Monate und Jahre mit Einträgen.</div></div>`;
+  if (!mit.length) return `<div class="card"><h2>Export</h2>${leerHtml("Noch keine Einträge. Sobald Tage erfasst sind, stehen hier die Auswertungen der Monate und Jahre mit Einträgen.")}</div>`;
   exportWahl = exportWahlPruefen(exportWahl, mit, jahre);
   const {j: ej, m: em, nj, kj} = exportWahl, mo = `api/monat/${ej}/${em}`;
-  const brauchtTage = linkAn("x.ics") || linkAn("x.json") || linkAn("x.xml") || linkAn("x.csv");
+  const brauchtTage = linkAn("x.ics") || linkAn("x.csv");
   const [monatDaten, s, alle] = await Promise.all([api("GET", `/monat/${ej}/${em}`), modulAn("nachweis") && hoModus() !== "kein" ? api("GET", `/steuer/${nj}`) : null,
     brauchtTage ? api("GET", "/export.json") : {tage: []}]);
   const monatWahl = exportAuswahl("ex-monat", "Monat (nur Monate mit Einträgen)", "exportMonatWaehlen", "monat", mit.map(x => [x, `${MONATE[+x.slice(5) - 1]} ${x.slice(0, 4)}`]), `${ej}-${pad(em)}`, "aktueller Monat");
@@ -3872,7 +4216,7 @@ async function seiteExport() {
     + exportKarte("ex-monat", "Monat", monatWahl, monatVorschau(monatDaten.tage), exportKnoepfe(FORMATE_MONAT.map(([n, e]) => [n, `${mo}.${e}`]), `Monat ${MONATE[em - 1]} ${ej}`))
     + (s ? exportKarte("ex-jahr", "Homeoffice-Übersicht", jahrWahl, uebersichtVorschau(s), exportKnoepfe(FORMATE_UEBERSICHT.map(([n, e]) => [n, `api/steuer/${nj}.${e}`]), `Homeoffice-Übersicht ${nj}`)) : "")
     + kalenderKarte(kj, jahre, alle.tage)
-    + exportKarte("ex-alle", "Alle erfassten Tage", "", alleVorschau(alle.tage), exportKnoepfe([["JSON", "api/export.json"], ["XML", "api/export.xml"], ["CSV", "api/export.csv"]], "Alle Tage"));
+    + exportKarte("ex-alle", "Alle erfassten Tage", "", alleVorschau(alle.tage), exportKnoepfe([["CSV", "api/export.csv"]], "Alle Tage"));
 }
 // ---- seiten/sicherung.js ----
 "use strict";
@@ -3884,9 +4228,12 @@ const PRUEFEN_SCHWERE = {fehler: ["✕", "Fehler"], hinweis: ["!", "Hinweis"]};
 const PRUEFEN_LAEDT = "Prüfe …";
 // Karte „App prüfen“ (Runde 2.7): Ergebnis des Prüfdatensatzes
 const APP_PRUEFEN_OK = "Alle Werte stimmen.";
-// Seite „Sicherung“: Daten prüfen, Datenbank herunterladen, aus einer Sicherungsdatei wiederherstellen, (Handy, Web-App) die verschlüsselte Sicherung und App prüfen.
+// Karte „Papierkorb“ (A7): geleerte Tage und gelöschte Einträge, 30 Tage wiederherstellbar; nur auf diesem Gerät
+const PAPIERKORB_TEXT = "Geleerte Tage und gelöschte Einträge bleiben hier 30 Tage, danach löscht die App sie von selbst. Der Papierkorb gilt nur auf diesem Gerät.";
+const PAPIERKORB_LEER = "Der Papierkorb ist leer.";
+// Seite „Sicherung“: Daten prüfen, Datenbank herunterladen, aus einer Sicherungsdatei wiederherstellen, Papierkorb, (Handy, Web-App) die verschlüsselte Sicherung und App prüfen.
 function seiteSicherung() {
-  window.nachher = () => { sichInfo(); };
+  window.nachher = () => { sichInfo(); papierkorbLaden(); };
   return `<div class="card" id="pruefen-karte"><h2>Daten prüfen</h2>
       <p class="hinweis" data-stil="margin-top:0">Sucht in allen Tagen nach Unstimmigkeiten: Gehen vor Kommen, Urlaub und Arbeitszeit am selben Tag, Arbeitszeit an Feiertagen, mehr Urlaub als Anspruch. Die Prüfung ändert nichts.</p>
       <div class="knoepfe"><button class="prim" id="pruefen-knopf" ${kl("datenPruefen")}>Daten prüfen</button></div>
@@ -3903,7 +4250,10 @@ function seiteSicherung() {
       <div class="knoepfe"><button class="gef" ${kl("wiederherstellen")}>Wiederherstellen …</button></div>`}
       <div id="wh-fehler"></div>
       <div id="wh-davor"></div>
-      <p class="hinweis">Exporte als JSON, XML oder CSV enthalten nur die Tage, keine Einstellungen. Sie lassen sich hier nicht einspielen.</p></div></div>
+      <p class="hinweis">Exporte (PDF, Excel, CSV) enthalten nur die Tage, keine Einstellungen. Sie lassen sich hier nicht einspielen.</p></div></div>
+    <div class="card" id="papierkorb-karte"><h2>Papierkorb</h2>
+      <p class="hinweis" data-stil="margin-top:0">${PAPIERKORB_TEXT}</p>
+      <div id="papierkorb-liste" aria-live="polite"><p class="hinweis">Lädt …</p></div></div>
     <div id="handy-sich"></div>
     <div class="card" id="app-pruefen-karte"><h2>App prüfen</h2>
       <p class="hinweis" data-stil="margin-top:0">Rechnet einen festen Satz erfundener Tage durch und vergleicht mit Werten, die von Hand gerechnet sind. Deine Daten fasst die Prüfung nicht an.</p>
@@ -3939,6 +4289,34 @@ function pruefenListeHtml(a) {
     return `<li class="pf-${f.schwere === "hinweis" ? "hinweis" : "fehler"}"><span class="pf-zeichen" aria-hidden="true">${zeichen}</span>${ZUTUN_ZIEL.test(f.ziel || "") ? `<a href="${esc(f.ziel)}">${text}</a>` : `<span>${text}</span>`}</li>`;
   };
   return `<ul class="pruef-liste">${a.funde.map(zeile).join("")}</ul>${a.mehr ? `<p class="hinweis">und ${a.mehr.toLocaleString("de-DE")} weitere</p>` : ""}`;
+}
+// Lädt den Papierkorb (GET /api/papierkorb) in die Karte, davor eine Meldung (html, schon maskiert). Die Knöpfe bindet die Karte selbst (data-korb),
+// weil ihre Nummern aus der Antwort kommen.
+async function papierkorbLaden(vorne = "") {
+  let html;
+  try {
+    const r = await api("GET", "/papierkorb");
+    html = r.eintraege.length ? r.eintraege.map(papierkorbZeile).join("") : `<p class="hinweis">${PAPIERKORB_LEER}</p>`;
+  } catch (e) { html = meldung(e.message); }
+  const box = $("#papierkorb-liste"); if (!box) return;            // die Seite kann inzwischen gewechselt sein
+  box.innerHTML = vorne + html; beschriften(box);
+  box.onclick = ev => { const b = ev.target.closest("button[data-korb]"); if (b) papierkorbZurueck(Number(b.dataset.korb), b); };
+}
+// Eine Zeile: Datum, was der Tag hatte (Art, Zeit je Ort, Zahl der Einträge, Notiz) und wann gelöscht; alle Werte maskiert.
+function papierkorbZeile(e) {
+  const zeit = m => m ? zeitText(m) : "";
+  const was = [e.art && ARTEN[e.art], e.ho || e.dst ? orteText(zeit(e.ho), zeit(e.dst)) : "", e.eintraege > 1 ? `${e.eintraege} Einträge` : "", e.notiz]
+    .filter(Boolean).join(" · ");
+  return `<div class="zeile"><span class="bez">${esc(de(e.datum))}<small>${esc(was ? was + " · " : "")}gelöscht ${esc(zeitpunktText(e.zeit))}</small></span>
+    <button type="button" data-korb="${Number(e.id)}" aria-label="${esc(de(e.datum))} wiederherstellen">Wiederherstellen</button></div>`;
+}
+// Holt einen Tag aus dem Papierkorb zurück. Ist er inzwischen neu belegt, meldet der Dienst das (409), und nichts ändert sich.
+async function papierkorbZurueck(id, knopf) {
+  knopf.disabled = true;
+  try {
+    const r = await api("POST", "/papierkorb/wiederherstellen", {id});
+    seitenCacheLeeren(); toast(`${de(r.datum)} wiederhergestellt.`); papierkorbLaden();
+  } catch (e) { papierkorbLaden(meldung(e.message)); }
 }
 // Zeigt die Ladezeile (W1) im Meldungsfeld einer Karte.
 function wartenZeigen(box) { box.innerHTML = `<p class="hinweis" role="status">${SICHERUNG_WARTEN}</p>`; }
@@ -4455,8 +4833,11 @@ function regelnKarte(kf, u, kj) {
       <p class="hinweis">Gleitzeit-Konto: Ab diesen Stunden im Plus oder im Minus steht ein Hinweis unter „Zu tun“. 0 = kein Hinweis.</p></div>
     <label>Pausenregel <small>(je Stufe hh:mm; leere Zeile zählt nicht)</small></label>
     <div class="pausen-stufen" id="r-pausen"><small>Kommen bis Gehen länger als</small><small>Pause insgesamt</small>${pausenZeilen(k.pausen || [])}</div>
-    <div class="zeile"${md("stempel")}><span>Stempeluhr über Mitternacht erlauben<br><small>Aus: Ende spätestens 23:59 am Starttag</small></span><input type="checkbox" id="r-sm" aria-label="Stempeluhr über Mitternacht erlauben"${k.stempel_mitternacht ? " checked" : ""}></div>
+    <p class="hinweis">Lücken zwischen Einträgen und Pausen von Hand zählen an, nur der Rest geht vom letzten Eintrag ab.</p>
+    ${kappzeitTeil(k)}
+    <div class="zeile"${md("stempel")}><span>Stempeluhr über Mitternacht erlauben<br><small>Aus: Ende spätestens 23:59 am Starttag</small></span><input type="checkbox" data-wechsel="mitternachtKappHinweis" id="r-sm" aria-label="Stempeluhr über Mitternacht erlauben"${k.stempel_mitternacht ? " checked" : ""}></div>
     <p class="hinweis"${md("stempel")}>Aus: Läuft die Uhr über 0 Uhr, fragt die App beim nächsten Öffnen „Gehen vergessen?“, gebucht wird nichts von selbst. An: Gehen nach Mitternacht zählt für den Tag des Kommens.</p>
+    <div${md("stempel")}><p class="hinweis" id="r-sm-kapp" role="status"${k.stempel_mitternacht && k.regelzeit_an !== false ? "" : " hidden"}>${mitternachtKappText(hhmm((k.regelzeit || [360, 1200])[1]))}</p></div>
     <label>Faschingsdienstag: Soll höchstens (Stunden, leer = normaler Tag)</label><input id="r-fa" inputmode="decimal" value="${k.fasching_std === null ? "" : komma(k.fasching_std)}">
     <label>Wann soll die Änderung gelten?</label>
     <div class="modus">
@@ -4469,6 +4850,32 @@ function regelnKarte(kf, u, kj) {
     <p class="hinweis">„Ab heute“ ändert nur künftige Tage. Gleitzeit-Konto und vergangene Auswertungen bleiben, wie sie sind. Bei „Rückwirkend“ oder einem Datum in der Vergangenheit ändern sich Soll und Feiertage auch für vergangene Tage. Trage danach den Gleitzeit-Stand unter „Person und Startwerte“ neu ein. Die HO-Grenze und die Höchstzahlen gelten für das Jahr, in dem du sie änderst, und für die folgenden.</p></div>
     <div class="card"><h2>Gültigkeit der Regeln</h2>${liste}<p class="hinweis">Jede Zeile gilt ab ihrem Datum bis zur nächsten. Löschst du eine Zeile, gilt wieder die vorherige Regel.</p></div>`;
 }
+// Kappzeit (Auftrag vom 25.11.2026): Regelarbeitszeit Beginn–Ende und Tagesgrenze netto, je an/aus; gespeichert mit den anderen Regeln (gilt ab).
+function kappzeitTeil(k) {
+  const [beginn, ende] = k.regelzeit || [360, 1200];
+  return `<h3 class="unter" id="kappzeit-regeln">Regelarbeitszeit und Tagesgrenze</h3>
+    <div class="zeile"><span>Regelarbeitszeit<br><small>Zeit davor und danach verfällt als Kappzeit, auch mit Freigabe</small></span><input type="checkbox" id="r-rz" aria-label="Regelarbeitszeit" data-wechsel="mitternachtKappHinweis"${k.regelzeit_an !== false ? " checked" : ""}></div>
+    <div class="reihe"><div><label for="r-rb">Beginn</label><input id="r-rb" inputmode="numeric" placeholder="06:00" value="${hhmm(beginn)}"></div><div><label for="r-re">Ende (einschließlich)</label><input id="r-re" inputmode="numeric" placeholder="20:00" value="${hhmm(ende)}" data-wechsel="mitternachtKappHinweis"></div></div>
+    <div class="zeile"><span>Tagesgrenze<br><small>Arbeitszeit netto darüber verfällt ohne „Über 10 Stunden freigegeben“</small></span><input type="checkbox" id="r-tg" aria-label="Tagesgrenze"${k.tagesgrenze_an !== false ? " checked" : ""}></div>
+    <label for="r-tm">Tagesgrenze (Stunden netto)</label><input id="r-tm" inputmode="numeric" placeholder="10:00" value="${hhmm(k.tagesgrenze_min || 600)}">`;
+}
+// Hinweis unter „Stempeluhr über Mitternacht erlauben“ (Entscheidung des Entwicklers vom 26.11.2026): mit Regelarbeitszeit kappt die App auch nachts ab deren Ende.
+const mitternachtKappText = ende => `Mit Regelarbeitszeit verfällt Zeit nach ${ende} Uhr als Kappzeit, auch über Mitternacht. Regelarbeitszeit anpassen oder abschalten.`;
+// Zeigt den Hinweis nur, solange beide Schalter an sind (so, wie sie gerade stehen), mit dem Ende aus dem Feld.
+function mitternachtKappHinweis() {
+  const h = $("#r-sm-kapp");
+  if (!h) return;
+  h.hidden = !($("#r-sm").checked && $("#r-rz").checked);
+  h.textContent = mitternachtKappText($("#r-re").value);
+}
+// Werte der Kappzeit für PUT /konfig (Uhrzeiten hh:mm prüft der Dienst).
+const kappzeitWerte = () => ({regelzeit_an: $("#r-rz").checked, regelzeit: [zeitNorm($("#r-rb").value), zeitNorm($("#r-re").value)],
+  tagesgrenze_an: $("#r-tg").checked, tagesgrenze_min: minuten(zeitNorm($("#r-tm").value))});
+// Trägt die Kappzeit der Regeln s in die Felder ein (Voreinstellung laden).
+function kappzeitFelder(s) {
+  $("#r-rz").checked = s.regelzeit_an !== false; $("#r-rb").value = hhmm(s.regelzeit[0]); $("#r-re").value = hhmm(s.regelzeit[1]);
+  $("#r-tg").checked = s.tagesgrenze_an !== false; $("#r-tm").value = hhmm(s.tagesgrenze_min);
+}
 // Speichert die Regeln (für alle Jahre, ab heute oder ab einem Datum) beim Server und zeichnet neu.
 async function regelnSpeichern() {
   const fa = $("#r-fa").value.trim(), modus = document.querySelector("input[name=r-modus]:checked").value;
@@ -4476,7 +4883,7 @@ async function regelnSpeichern() {
     const r = await api("PUT", "/konfig", {modus, ab: $("#r-ab").value, werte: {bundesland: $("#r-bl").value, heiligabend_frei: $("#r-ha").checked, silvester_frei: $("#r-sy").checked, himmelfahrt_frei: $("#r-mh").checked, urlaub_tage: +$("#r-ut").value, zusatzurlaub_art: $("#r-za").value, zusatzurlaub_tage: +$("#r-zt").value,
       wochenstunden: $("#r-ws").value, arbeitstage: [...document.querySelectorAll("#r-tage input:checked")].map(e => e.value).join(","),
       fasching_std: fa === "" ? null : fa, ...hoRegel($("#r-hm").value, +$("#r-ho").value), gleittage_max: +$("#r-gt").value, familientage_max: +$("#r-ft").value,
-      ...kappungWerte(), zutun_sicherung_tage: +$("#r-zs").value, zutun_saldo_grenze: +$("#r-zg").value, zutun_saldo_minus: +$("#r-zm").value, stempel_mitternacht: $("#r-sm").checked,
+      ...kappungWerte(), ...kappzeitWerte(), zutun_sicherung_tage: +$("#r-zs").value, zutun_saldo_grenze: +$("#r-zg").value, zutun_saldo_minus: +$("#r-zm").value, stempel_mitternacht: $("#r-sm").checked,
       pausen: [0, 1, 2, 3].filter(i => $(`#r-pa${i}`)).map(i => [zeitNorm($(`#r-pa${i}`).value), zeitNorm($(`#r-pp${i}`).value)]).filter(([a, b]) => a || b)}});
     KONFIG = r.werte; toast("Regeln gespeichert"); zeigen();
   } catch (e) { $("#r-fehler").innerHTML = meldung(e.message); }
@@ -4487,7 +4894,7 @@ function regelnStandard() {
   $("#r-bl").value = s.bundesland; $("#r-ha").checked = s.heiligabend_frei; $("#r-sy").checked = s.silvester_frei; $("#r-mh").checked = s.himmelfahrt_frei; $("#r-ut").value = s.urlaub_tage; $("#r-za").value = s.zusatzurlaub_art; $("#r-zt").value = s.zusatzurlaub_tage; $("#r-ws").value = s.wochenstunden;
   document.querySelectorAll("#r-tage input").forEach(e => { e.checked = s.arbeitstage.split(",").includes(e.value); });
   $("#r-fa").value = s.fasching_std === null ? "" : komma(s.fasching_std); $("#r-ho").value = s.ho_grenze; $("#r-hm").value = s.ho_modus; hoModusWahl(s.ho_modus); $("#r-gt").value = s.gleittage_max; $("#r-ft").value = s.familientage_max;
-  kappungFelder(s); $("#r-zs").value = zutunSicherungTage(s); $("#r-zg").value = zutunSaldoGrenze(s); $("#r-zm").value = zutunSaldoMinus(s); $("#r-sm").checked = s.stempel_mitternacht;
+  kappungFelder(s); kappzeitFelder(s); $("#r-zs").value = zutunSicherungTage(s); $("#r-zg").value = zutunSaldoGrenze(s); $("#r-zm").value = zutunSaldoMinus(s); $("#r-sm").checked = s.stempel_mitternacht; mitternachtKappHinweis();
   $("#r-pausen").innerHTML = `<small>Kommen bis Gehen länger als</small><small>Pause insgesamt</small>${pausenZeilen(s.pausen)}`;
   toast("Voreinstellung eingetragen, noch nicht gespeichert");
 }
@@ -4582,15 +4989,9 @@ const jeTagText = x => Object.entries(x.stunden_je_tag || {}).map(([t, m]) => `$
 function abschnitteKarte(a) {
   const zeile = x => `<button type="button" class="zeile abschnitt-zeile" ${kl("abschnittBearbeiten", x.id)}><span>${de(x.von)} – ${de(x.bis)}<br>
     <small>${ABSCHNITT_ART[x.art]} · Sollzeit pro Woche: ${x.wochensoll} Std. · ${x.weg === 1 ? WEG1_HINWEIS : esc(jeTagText(x) || x.arbeitstage)}</small></span><span aria-hidden="true">›</span></button>`;
-  const liste = [...a].sort((a, b) => a.von.localeCompare(b.von)).map(zeile).join("") || `<div class="leer">Keine Abschnitte.</div>`;
+  const liste = [...a].sort((a, b) => a.von.localeCompare(b.von)).map(zeile).join("") || leerHtml("Keine Abschnitte.");
   return `<div class="card"><h2>Arbeitszeit-Abschnitte</h2>${liste}<div class="knoepfe"><button class="prim" ${kl("abschnittBearbeiten", 0)}>Neuer Abschnitt ab ${de(neuerAbschnittAb(a))}</button></div>
     <p class="hinweis">Ohne Abschnitt gilt die Standardarbeitszeit (${komma(KONFIG.wochenstunden)} Stunden, ${KONFIG.arbeitstage.replace(/,/g, ", ")}; unter „Regeln“ einstellbar). Abschnitte beschreiben abweichende Arbeitszeiten für einen Zeitraum, zum Beispiel Teilzeit, Elternzeit oder Elternteilzeit. Bei Teilzeit lassen sich die Stunden je Tag einzeln eintragen.</p></div>`;
-}
-// Minuten aus „6:30“, „6,5“ oder „6“ für die Anzeige der Summe; was sich nicht lesen lässt, ergibt NaN (prüfen tut der Server).
-function dauerMinuten(t) {
-  const m = /^(\d{1,2}):([0-5]\d)$/.exec(t);
-  if (m) return +m[1] * 60 + +m[2];
-  return /^\d{1,2}([.,]\d+)?$/.test(t) ? Math.round(parseFloat(t.replace(",", ".")) * 60) : NaN;
 }
 // Weg 3: Sobald Stunden je Tag eingetragen sind, zeigt „Wochenstunden“ nur ihre Summe; sonst ist das Feld wieder frei.
 function wochenstundenNurAnzeige() {
@@ -4820,14 +5221,14 @@ async function notizVorlageWeg(box, ev) {
 // Karten „Gleitzeit-Konto“ und „Freizeitkonto“: Stand heute und Stand zu einem Tag festlegen.
 function kontenKarten(gz) {
   const heute = new Date().toISOString().slice(0, 10);
-  return `<div class="card"${md("gleitzeit")}><h2>Gleitzeit-Konto</h2><div class="zeile"><span>Stand heute</span><b class="gross saldo ${saldoKlasse(gz.konto_min)}">${gz.konto}</b></div>
+  return `${kontoKarte("gleitzeit", `${wertZeile("Stand heute", gz.konto, `gross saldo ${saldoKlasse(gz.konto_min)}`, "zeile")}
       <div class="reihe"><div><label for="g-stand">Stand (hh:mm)</label><input id="g-stand" placeholder="z. B. −03:15"></div><div><label for="g-datum">am Ende von</label><input id="g-datum" type="date" value="${heute}"></div></div>
       <div id="g-fehler"></div><div class="knoepfe"><button class="prim" ${kl("gleitzeitSetzen")}>Stand festlegen</button></div>
-      <p class="hinweis">Das Konto rechnet Ist minus Soll aller erfassten Tage (Gleittag = −Tagessoll, Urlaub und Krank ohne Soll). Wenn es von deinem bisherigen Stand abweicht, lege hier den richtigen Stand zu einem Tag fest. Die App rechnet ab dort weiter.</p></div>
-    <div class="card"${md("freizeit")}><h2>Freizeitkonto</h2><div class="zeile"><span>Stand heute</span><b class="gross saldo ${saldoKlasse(gz.freizeit_min)}">${gz.freizeit}</b></div>
+      <p class="hinweis">Das Konto rechnet Ist minus Soll aller erfassten Tage (Gleittag = −Tagessoll, Urlaub und Krank ohne Soll). Wenn es von deinem bisherigen Stand abweicht, lege hier den richtigen Stand zu einem Tag fest. Die App rechnet ab dort weiter.</p>`)}
+    ${kontoKarte("freizeit", `${wertZeile("Stand heute", gz.freizeit, `gross saldo ${saldoKlasse(gz.freizeit_min)}`, "zeile")}
       <div class="reihe"><div><label for="fz-stand">Stand (hh:mm)</label><input id="fz-stand" placeholder="z. B. −02:00"></div><div><label for="fz-datum">am Ende von</label><input id="fz-datum" type="date" value="${heute}"></div></div>
       <div id="fz-fehler"></div><div class="knoepfe"><button class="prim" ${kl("freizeitSetzen")}>Stand festlegen</button></div>
-      <p class="hinweis">Das Freizeitkonto ist unabhängig von der Gleitzeit: Arbeitszeit an Samstagen, Sonntagen und Feiertagen kommt dazu, die Art „Freizeitausgleich“ bucht das Tagessoll ab.</p></div>`;
+      <p class="hinweis">Das Freizeitkonto ist unabhängig von der Gleitzeit: Arbeitszeit an Samstagen, Sonntagen und Feiertagen kommt dazu, die Art „Freizeitausgleich“ bucht das Tagessoll ab.</p>`)}`;
 }
 // Unterseite „Person und Startwerte“: lädt Startwerte, Konten und den Kopf des Monatsnachweises.
 async function einstPerson() {
@@ -4842,64 +5243,26 @@ async function einstPerson() {
 // ---- seiten/einstellungen_aussehen.js ----
 "use strict";
 // Zeiterfassung. © 2026 David Saluda. Alle Rechte vorbehalten. Erstellt mit Unterstützung von KI (Claude, Anthropic).
-// Einstellungen, Unterseite „Aussehen“: Design, Farbe, Stil, Glaseffekt, Akzentfarbe, Zeitformat und Browser des Fensters.
-const AKZENT_NAMEN = {blau: "Blau", cyan: "Cyan", tuerkis: "Türkis", gruen: "Grün", lindgruen: "Lindgrün", gelb: "Gelb", gold: "Gold", orange: "Orange", rot: "Rot", rosa: "Rosa", violett: "Violett", indigo: "Indigo", braun: "Braun", graphit: "Graphit"};
-function hexNormal(v) {                                     // "1a73e8", "#abc" -> "#1a73e8"/"#aabbcc"; ungültig -> null
-  v = String(v).trim(); if (v && v[0] !== "#") v = "#" + v;
-  if (/^#[0-9a-f]{3}$/i.test(v)) v = "#" + [...v.slice(1)].map(x => x + x).join("");
-  return hexOk(v) ? v.toLowerCase() : null;
-}
-// Zeigt die Farbe im Feld und an Beispielen, ohne sie zu speichern: Knopf (--v, --vt), Chip und Schrift (--vf), Umriss in der Bedienfarbe (--vu, design.md 6.3).
-function akzentVorschau(c) {
-  const d = $("#akz-demo"), p = $("#akz-vorschau"); if (!d || !p) return;
-  p.style.background = c || "transparent"; p.classList.toggle("leer", !c);
-  d.style.setProperty("--v", c ? knopfFarbe(c) : "var(--acc-k)"); d.style.setProperty("--vt", c ? schriftAufFarbe(c) : "var(--acc-t)"); d.style.setProperty("--vf", c ? akzentSchrift(c) : "var(--acc-fg)");
-  d.style.setProperty("--vu", c ? akzentBedien(c) : "var(--acc-ui)");
-}
-// Setzt die Akzentfarbe auf Blau zurück.
-function akzentStandard() { speicher.s("ho_akzent", "blau"); darstellung(); zeigen(); }
-// Karte „Aussehen“ der Einstellungen: Design, Farbe, Stil, Glaseffekt (nur beim Stil Glas) und Akzentfarbe (Palette und Hex-Wert). Die Knöpfe werden in window.nachher gebunden, wenn die Seite steht.
+// Einstellungen, Unterseite „Aussehen“: Farbe, Akzentfarbe, Kacheln, Zeitformat und Browser des Fensters.
+const AUSSEHEN_ADRESSE = "#/einstellungen/aussehen";
+// Markiert in der Gruppe g den Knopf mit dem Wert v als gewählt.
+const wahlZeigen = (g, v) => g?.querySelectorAll("button").forEach(x => x.classList.toggle("on", x.dataset.v === v));
+// Setzt die Akzentfarbe auf Blau zurück, ohne die Seite neu zu zeichnen (Scroll-Stand und Fokus bleiben).
+function akzentStandard() { speicher.s("ho_akzent", AKZENT_VORGABE); darstellung(); wahlZeigen($("#inhalt [data-n=akzent]"), AKZENT_VORGABE); }
+// Karte „Aussehen“ der Einstellungen: Farbe und Akzentfarbe. Die Knöpfe werden in window.nachher gebunden, wenn die Seite steht.
+// Eine Wahl wirkt über darstellung() (CSS-Variablen) ohne Neuzeichnen: Neuzeichnen verlor den Fokus und sprang nach „Kacheln anpassen“ wieder zu dieser Karte.
 function seiteDarstellung() {
-  const d = speicher.l("ho_design", "auto"), f = speicher.l("ho_farbe", FARBE_VORGABE), a = speicher.l("ho_akzent", "blau");
-  const thema = themaAktiv();
-  // Gruppe von Auswahlknöpfen; der gewählte trägt die Klasse on.
-  const seg = (name, wahl, akt) => `<div class="seg" data-n="${name}">${wahl.map(([k, t]) => `<button data-v="${k}" class="${akt === k ? "on" : ""}">${t}</button>`).join("")}</div>`;
-  window.nachher = () => {
-    document.querySelectorAll("#inhalt [data-n]").forEach(g => g.querySelectorAll("button").forEach(b => b.onclick = () => {
-    speicher.s("ho_" + g.dataset.n, b.dataset.v); darstellung();
-    g.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
-    if (["akzent", "farbe", "thema"].includes(g.dataset.n)) zeigen();   // Farbe: die Vorschau rechnet die Schrift des Akzents gegen den neuen Hintergrund (sonst zu wenig Kontrast); Stil: Glaseffekt nur bei Glas
+  const f = speicher.l("ho_farbe", FARBE_VORGABE), a = akzentName(speicher.l("ho_akzent", AKZENT_VORGABE));
+  window.nachher = () => document.querySelectorAll("#inhalt [data-n]").forEach(g => g.querySelectorAll("button").forEach(b => b.onclick = () => {
+    speicher.s("ho_" + g.dataset.n, b.dataset.v); darstellung(); wahlZeigen(g, b.dataset.v);
   }));
-  akzentVorschau(hexOk(speicher.l("ho_akzent", "")) ? speicher.l("ho_akzent", "") : hexNormal($("#akz-hex") ? $("#akz-hex").value : ""));
-  const eig = $("#akz-eigen"), hex = $("#akz-hex");
-  if (eig) {
-    // Übernimmt eine eigene Farbe: speichern, anwenden, Vorschau und Farbpalette-Knopf nachziehen.
-    const setze = f => {
-      speicher.s("ho_akzent", f); darstellung(); akzentVorschau(f);
-      document.querySelectorAll("#inhalt .farben button").forEach(x => x.classList.remove("on"));
-      const l = document.querySelector(".palette-knopf"); l.classList.add("on"); l.querySelector(".punkt").style.background = f; eig.value = f; hex.value = f;
-    };
-    eig.oninput = () => setze(eig.value.toLowerCase());
-    hex.oninput = () => akzentVorschau(hexNormal(hex.value));
-    hex.onchange = () => { const v = hexNormal(hex.value); if (v) setze(v); else { toast("Hex-Wert wie #1a73e8 eingeben"); hex.value = hexOk(speicher.l("ho_akzent", "")) ? speicher.l("ho_akzent", "") : ""; } };
-  }
-  };
   return `<div class="card"><h2>Aussehen</h2>
-    <label>Design</label>${seg("design", [["auto", "Automatisch"], ["web", "Web"], ["handy", "Handy"]], d)}
-    <p class="hinweis">Web: Seitenleiste und breite Ansicht für Computer und große Tablets. Handy: Tableiste unten für Smartphones. Automatisch wählt nach der Fensterbreite.</p>
-    <label>Farbe</label>${seg("farbe", [["auto", "Automatisch"], ["hell", "Hell"], ["dunkel", "Dunkel"]], f)}
+    <label>Farbe</label>${segHtml([["auto", "Automatisch"], ["hell", "Hell"], ["dunkel", "Dunkel"]], f, {name: "farbe"})}
     <p class="hinweis">Automatisch folgt der Einstellung deines Geräts.</p>
-    <label>Stil</label>${seg("thema", Object.entries(THEMEN), thema)}
-    <p class="hinweis">Glas: durchscheinend und weich. Flächig: getönte Flächen, runde Knöpfe. Kompakt: dicht, feine Linien. Klar: Linien statt Schatten, große Zahlen. Kräftig: dicke Ränder, harte Schatten. Terminal: Schrift mit fester Breite, schmale Rahmen. Gilt nur auf diesem Gerät.</p>
-    ${thema === THEMA_VORGABE ? `<label>Glaseffekt</label>${seg("glas", [["auto", "Automatisch"], ["an", "An"], ["aus", "Aus"]], speicher.l("ho_glas", "auto"))}
-    <p class="hinweis">Durchscheinende, weiche Flächen. Aus macht sie deckend und spart Leistung. Automatisch schaltet ihn auf schwachen Geräten ab. Ist am Gerät „Transparenz reduzieren“ an, ist er immer aus.</p>` : ""}
     <label>Akzentfarbe</label><div class="farben" data-n="akzent">${Object.entries(AKZENTE).map(([k, c]) => `<button data-v="${k}" class="${a === k ? "on" : ""}" data-stil="background:${c}" aria-label="${AKZENT_NAMEN[k]}" title="${AKZENT_NAMEN[k]}"></button>`).join("")}</div>
-    <h3 class="unter">Eigene Farbe</h3>
-    <div class="reihe eigen-farbe"><div><label>Farbpalette</label><span class="palette-knopf${hexOk(a) ? " on" : ""}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.9-.9 1.9-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.1-4-7.5-9-7.5z"/><circle cx="7.5" cy="11" r="1" fill="currentColor"/><circle cx="10.5" cy="7" r="1" fill="currentColor"/><circle cx="15" cy="7.5" r="1" fill="currentColor"/></svg><span>Farbe wählen</span><i class="punkt" data-stil="${hexOk(a) ? "background:" + a : ""}"></i><input type="color" id="akz-eigen" value="${hexOk(a) ? a : "#007aff"}" aria-label="Farbe in der Palette wählen"></span></div>
-      <div><label>Hex-Wert</label><div class="hexfeld"><span id="akz-vorschau" class="vorschau" data-stil="background:${akzentFarbe(a)}"></span><input id="akz-hex" value="${hexOk(a) ? a : ""}" placeholder="#RRGGBB" maxlength="7" autocapitalize="off" spellcheck="false"></div></div></div>
     <div class="akzent-demo" id="akz-demo"><small>Vorschau</small><span class="demo-knopf">Knopf</span><span class="demo-chip">Aktiv</span><span class="demo-text">Hervorhebung</span><span class="demo-umriss">Umriss</span></div>
     <div class="knoepfe"><button ${kl("akzentStandard")}>Zurück zum Standard</button></div>
-    <p class="hinweis">Die Akzentfarbe gilt für Knöpfe, Hervorhebungen und das App-Symbol. „Farbe wählen“ öffnet die Farbpalette deines Geräts. Du kannst auch einen Hex-Wert eingeben. Sehr dunkle Farben sind im dunklen Design schwer lesbar, sehr helle (zum Beispiel Weiß) im hellen. Symbol und Knöpfe bekommen dann einen Rand.</p></div>`;
+    <p class="hinweis">Die Akzentfarbe gilt für Knöpfe, Hervorhebungen und das App-Symbol. Blau ist der Standard.</p></div>`;
 }
 // Zeitformat der Zeiten in App und Exporten (Regel „zeitformat“, Vorgabe hh:mm wie zeit.fmt_hhmm); Anzeige je Wahl mit Beispiel.
 const ZEITFORMATE = [["hhmm", "07:30"], ["dezimal", "7,50"]];
@@ -4907,12 +5270,16 @@ const ZEITFORMATE = [["hhmm", "07:30"], ["dezimal", "7,50"]];
 function zeitformatKarte(k) {
   const akt = k.zeitformat || "hhmm";
   return `<div class="card"><h2>Zeitformat</h2><label id="zf-name">7:30 oder 7,50</label>
-    <div class="seg" role="group" aria-labelledby="zf-name">${ZEITFORMATE.map(([w, t]) => `<button type="button" id="zf-${w}" data-v="${w}" class="${akt === w ? "on" : ""}" aria-pressed="${akt === w}">${t}</button>`).join("")}</div>
+    ${segHtml(ZEITFORMATE, akt, {beschriftet: "zf-name", knopfId: "zf-"})}
     <p class="hinweis">Gilt für Stunden in der App und in den Exporten.</p><div id="zf-fehler"></div></div>`;
 }
-// Speichert das Zeitformat (für alle Zeiträume) und zeichnet neu; bei einem Fehler bleibt die alte Wahl stehen.
+// Speichert das Zeitformat (für alle Zeiträume) und markiert die Wahl ohne Neuzeichnen (wie die Akzentfarbe: kein Sprung, der Fokus bleibt am Knopf);
+// die anderen Seiten zeichnen beim nächsten Öffnen mit dem neuen Format. Bei einem Fehler bleibt die alte Wahl stehen.
 async function zeitformatSetzen(knopf) {
-  try { KONFIG = (await api("PUT", "/konfig", {modus: "ueberall", werte: {zeitformat: knopf.dataset.v}})).werte; seitenCacheLeeren(); zeigen(); }
+  try {
+    KONFIG = (await api("PUT", "/konfig", {modus: "ueberall", werte: {zeitformat: knopf.dataset.v}})).werte; seitenCacheLeeren();
+    wahlZeigen(knopf.closest(".seg"), knopf.dataset.v); $("#zf-fehler").textContent = "";
+  }
   catch (e) { $("#zf-fehler").innerHTML = meldung(e.message); }
 }
 // Karte „Rückfrage“: nur hinter dem Anmeldedienst (Abmelden) und in der Desktop-Fassung (App beenden); dreht „Nicht mehr fragen“ zurück.
@@ -4958,13 +5325,18 @@ function uebersichtZeigen(an, e) {
 }
 // „Standard“: vergisst die Anordnung (leer, damit spätere Karten an ihrem Standardplatz stehen).
 function uebersichtStandard() { speicher.s(UEBERSICHT_SPEICHER, ""); uebersichtNeu("ua-standard"); zutunLaden().then(zutunZahl); toast("Übersicht wie ab Werk."); }
-// Ziel des Knopfs „Kacheln anpassen“ der Übersicht (#/einstellungen/aussehen/anordnen): Karte „Kacheln anpassen“ oben ins Bild, Fokus auf ihre Überschrift.
-function uebersichtAnordnenZeigen() { ueberschriftZeigen($("#uebersicht-anordnen h2")); }
+// Ziel des Knopfs „Kacheln anpassen“ der Übersicht (#/einstellungen/aussehen/anordnen): Karte „Kacheln anpassen“ oben ins Bild, Fokus auf ihre Überschrift,
+// danach die schlichte Adresse ohne Eintrag im Verlauf: Sonst spränge jedes spätere Neuzeichnen (Zeitformat, Hell/Dunkel oben) wieder zur Karte.
+// zeigen.letzte nachziehen, damit zeigen() das nicht als Seitenwechsel nimmt (die Seite stünde sonst oben).
+function uebersichtAnordnenZeigen() {
+  history.replaceState(history.state, "", AUSSEHEN_ADRESSE); zeigen.letzte = location.hash;
+  ueberschriftZeigen($("#uebersicht-anordnen h2"));
+}
 // Unterseite „Aussehen“: lädt nur die Regeln (Zeitformat) und den Browser des Fensters (Desktop). Mit …/anordnen (Knopf der Übersicht) steht die Karte „Kacheln anpassen“ oben.
 async function einstAussehen() {
   const [kf, browser] = await Promise.all([api("GET", "/konfig"), browserWahlHtml(false)]);
   KONFIG = kf.werte;
-  const html = `<section id="aussehen" aria-label="Aussehen">${seiteDarstellung()}${uebersichtKarte()}${zeitformatKarte(KONFIG)}${abmeldeFrageKarte()}${browser}</section>`;
+  const html = `<section id="aussehen" aria-label="Aussehen">${seiteDarstellung()}${uebersichtKarte()}${zeitformatKarte(KONFIG)}${abmeldeFrageKarte()}${neuKarte()}${browser}</section>`;
   einstBinden(Object.fromEntries(ZEITFORMATE.map(([w]) => [`zf-${w}`, ["click", zeitformatSetzen]])));
   if (hashTeile()[2] === "anordnen") { const vorher = window.nachher; window.nachher = () => { vorher?.(); uebersichtAnordnenZeigen(); }; }   // nach dem Binden der Knöpfe
   return html;
@@ -4976,7 +5348,7 @@ async function einstAussehen() {
 // Modul-Schalter nach Bereichen geordnet (aufbau.md 9); Zeit steht an zweiter Stelle, weil die Übersicht vorn steht.
 const MODUL_GRUPPEN = [["Übersicht", ["zutun"]], ["Zeit", ["woche", "monat", "stempel", "gleitzeit", "freizeit"]], ["Homeoffice", ["horest", "jahr"]],
   ["Abwesenheit", ["urlaub", "gleittage", "familientage", "angespart", "planung", "krank", "sonderurlaub", "kind_krank"]],
-  ["Auswertung", ["monatsnachweis", "export", "ex_pdf", "ex_office", "ex_text", "ex_daten", "ex_kalender", "nachweis"]], ["Daten", ["sicherung", "abgleich", "github", "koppeln"]], ["Hilfe", ["hilfe"]]];
+  ["Auswertung", ["monatsnachweis", "export", "ex_pdf", "ex_office", "ex_daten", "ex_kalender", "nachweis"]], ["Daten", ["sicherung", "abgleich", "github", "koppeln"]], ["Hilfe", ["hilfe"]]];
 // Karte „Module“: Schalter je Seite und Funktion; Abgeschaltetes zeigt die App nirgends mehr.
 function moduleKarte(namen, allein) {
   return `<div class="card" id="module-karte"><h2>Module</h2><p class="hinweis" data-stil="margin-top:0">Was du abschaltest, zeigt die App nirgends mehr an. Gerechnet wird unverändert, vorhandene Einträge bleiben erhalten. Die Auswahl gilt sofort, für alle Zeiträume, und wird auch synchronisiert. Jeder Reiter ist ein Modul, nur Übersicht, Tag und Einstellungen bleiben immer. Ohne „Sicherung“ erinnert die App auch nicht mehr ans Sichern. Ist „Synchronisieren“ aus, synchronisiert dieses Gerät nicht mehr: nicht von Hand, nicht automatisch und nicht als Speicherort für andere. „Synchronisieren“ gilt als einziges Modul nur für das Gerät, an dem du es schaltest. Beim Abschalten meldet sich das Gerät mit einer letzten Synchronisierung ab. Die anderen zählen mit: Solange noch mindestens zwei Geräte synchronisieren, läuft die Synchronisierung dort weiter. Ist ein Gerät allein übrig, schaltet es die Synchronisierung von selbst ab. Ein Profil setzt auch die Module: „Büro + Homeoffice“ schaltet wieder alles ein, „Nur Büro“ und „Nur Homeoffice“ blenden nicht Gebrauchtes aus.</p>
@@ -5036,7 +5408,7 @@ function profilKarte(bundeslaender) {
     ...w.pausen.map(([ab, p]) => `über ${zeit(ab)} Std. ${zeit(p)} Pause`)].filter(Boolean).join(" · ");
   return `<div class="card"><h2>Vorbelegung (Profile)</h2>
     <p class="hinweis" data-stil="margin-top:0">Ein Profil ist ein fertiger Satz Regeln, wahlweise mit einer Darstellung (Akzentfarbe, Hell oder Dunkel). „Anwenden“ setzt die Regeln ab heute; frühere Tage bleiben, wie sie sind. Die Darstellung lässt sich danach unter „Aussehen“ weiter ändern.</p>
-    ${PROFILE.map((x, i) => `<div class="profil${x.aktiv ? "" : " aus"}"><div class="zeile"><span><b>${esc(x.name)}</b>${x.fest ? " <small>(fest)</small>" : ""}${x.voreinstellung ? " <small>(Voreinstellung)</small>" : ""}${x.akzent ? ` <span class="profil-farbe" data-stil="background:${x.akzent}" title="Akzentfarbe ${x.akzent}"></span>` : ""}${x.farbe ? ` <small>${({hell: "hell", dunkel: "dunkel", auto: "wie das Gerät"})[x.farbe]}</small>` : ""}<br><small>${x.aktiv ? esc(kurz(x.werte)) : "ausgeblendet"}</small></span>
+    ${PROFILE.map((x, i) => `<div class="profil${x.aktiv ? "" : " aus"}"><div class="zeile"><span><b>${esc(x.name)}</b>${x.fest ? " <small>(fest)</small>" : ""}${x.voreinstellung ? " <small>(Voreinstellung)</small>" : ""}${x.akzent ? ` <span class="profil-farbe" data-stil="background:${akzentFarbe(x.akzent)}" title="Akzentfarbe ${AKZENT_NAMEN[akzentName(x.akzent)]}"></span>` : ""}${x.farbe ? ` <small>${({hell: "hell", dunkel: "dunkel", auto: "wie das Gerät"})[x.farbe]}</small>` : ""}<br><small>${x.aktiv ? esc(kurz(x.werte)) : "ausgeblendet"}</small></span>
       <input type="checkbox" ${x.aktiv ? "checked" : ""} data-i="${i}" data-wechsel="profilSchalten" aria-label="Profil ${esc(x.name)} zur Auswahl anbieten"></div>
       ${x.aktiv ? `<div class="knoepfe"><button type="button" ${kl("profilAnwenden", i)}>Anwenden</button><a class="btn" href="api/profile/${i}.json" aria-label="Profil ${esc(x.name)} als Datei laden">Datei</a>${x.fest ? "" : `<button type="button" ${kl("profilLoeschen", i)}>Löschen</button>`}</div>` : ""}</div>`).join("")}
     <label for="pf-name">Aktuelle Regeln als eigenes Profil speichern (vorhandener Name wird überschrieben)</label><input type="text" id="pf-name" maxlength="40" placeholder="Name des Profils" autocomplete="off">
@@ -5246,21 +5618,21 @@ async function einstGeraete() {
 // ---- seiten/tag.js ----
 "use strict";
 // Zeiterfassung. © 2026 David Saluda. Alle Rechte vorbehalten. Erstellt mit Unterstützung von KI (Claude, Anthropic).
-// ---- Tag (Reiter im Bereich Zeit): Kopf ‹ Datum › mit Kalender und „Heute“, darunter die Karte des Tages und seine Einträge.
+// ---- Tag (Reiter im Bereich Zeit): Kopf ‹ Datum › mit Kalender und „Heute“, darunter die Karte des Tages (Soll und Ist) und seine Einträge,
+// jeder einzeln änderbar und löschbar, dazu „+ Eintrag“ (Wunsch vom 25.11.2026).
 // Die Werte kommen aus GET /woche (nur dort gibt es Ist, Soll und Saldo je Tag). Am Handy öffnet „Bearbeiten“ das Blatt, am Rechner steht das Formular daneben.
 async function seiteTag() {
   const d = zeitAnkommen(), [kj, kw] = kwJahr(isoZuDatum(d)), bearbeiten = zeitParameter(hashTeile(), zeitHeuteIso()).bearbeiten;
-  const w = await api("GET", `/woche/${kj}/${kw}`);
+  const [w, verlauf] = await Promise.all([api("GET", `/woche/${kj}/${kw}`), gleitzeitVerlauf("tag", d)]);   // Verlauf: letzte 10 Tage (Wunsch 25.11.2026)
   window.monatDaten = {tage: w.tage}; window.famAktiv = w.familientage_aktiv;   // tagBearbeiten liest den Tag von hier
-  window.nachher = () => { zeitSpalte(); tagLaufend(); if (bearbeiten) zeitBearbeitenOeffnen(d); };
+  window.nachher = () => { zeitSpalte(); eintraegeBinden(d); tagLaufend(); gzVerlaufEinpassen(); if (bearbeiten) zeitBearbeitenOeffnen(d); };
   const t = w.tage.find(z => z.datum === d), heuteIso = zeitHeuteIso(), istHeute = d === heuteIso;
   const titel = istHeute ? `Heute, ${t.wt} ${t.tag}.` : `${t.wt} ${d.slice(8)}.${d.slice(5, 7)}.`;
   tagLiveStand = {t, titel};
   const knoepfe = zeitDaneben() ? "" : `<div class="schnell"><button class="prim" ${kl("tagBearbeiten", d)}>Bearbeiten</button>${istHeute ? `<button${md("stempel")} ${kl("stempelBlatt")}>Stempeluhr</button>` : ""}</div>`;
-  return `<div class="kopf"><button ${kl("zeitBlaettern", -1)} aria-label="Vorheriger Tag">‹</button><h2>${t.wt} ${d.slice(8)}.${d.slice(5, 7)}.${d.slice(0, 4)}</h2>
-    <div class="kopf-rechts"><span class="kal-wahl"><button type="button" ${kl("zeitKalender", "#t-kal")} aria-label="Tag im Kalender wählen">${sym("monat")}</button><input id="t-kal" type="date" value="${d}" ${ZEIT_KAL_GRENZEN} data-wechsel="zeitKalenderDatum" tabindex="-1" aria-hidden="true"></span><button class="heute-knopf" ${kl("zeitHeute")}>Heute</button><button ${kl("zeitBlaettern", 1)} aria-label="Nächster Tag">›</button></div></div>
+  return `${kopfHtml("tag", `${t.wt} ${d.slice(8)}.${d.slice(5, 7)}.${d.slice(0, 4)}`, "t-kal", d)}
     ${zeitLeerHtml(w.tage)}<div id="tag-karte">${tagKarteHtml(t, saldoKlasse, titel)}</div>
-    <div class="card">${tagZeileHtml(t, heuteIso, saldoKlasse, true)}${tagEintraegeHtml(t)}<div id="tag-laufend"></div></div>${knoepfe}`;
+    <div class="card">${tagZeileHtml(t, heuteIso, saldoKlasse, true)}${tagEintraegeHtml(t)}<div id="tag-laufend"></div>${eintragNeuHtml()}</div>${knoepfe}${verlauf}`;
 }
 // ---- seiten/sondertage.js ----
 "use strict";
@@ -5271,14 +5643,12 @@ const LIMIT_WEG = "#/einstellungen/arbeitszeit";                 // mit „/<Jah
 // Seite „Sondertage“: je Modul eine Karte; Werte nur aus GET /api/urlaub/<Jahr>.
 async function seiteSondertage() {
   const u = await api("GET", `/urlaub/${jahr}`);
-  // Zeile mit Titel und Wert.
-  const z = (t, v, k = "") => `<div class="zeile gr"><span>${t}</span><b class="${k}">${v}</b></div>`;
   const start = u.kind_krank_start ? `<p class="hinweis">davon ${u.kind_krank_start} aus Startwerten</p>` : "";
   const voll = u.kind_krank_rest === 0 ? `<p class="hinweis">Das Limit für ${jahr} ist erreicht.</p>` : "";
-  return `<div class="gitter"><div class="card"${md("sonderurlaub")}><h2>Sonderurlaub ${jahr}</h2>${z("Verbraucht", u.sonderurlaub)}
+  return `<div class="gitter"><div class="card"${md("sonderurlaub")}><h2>Sonderurlaub ${jahr}</h2>${wertZeile("Verbraucht", u.sonderurlaub)}
       <p class="hinweis">Sonderurlaub trägst du am Tag über „Art des Tages“ ein oder planst ihn unter Urlaub.</p></div>
-    <div class="card"${md("kind_krank")}><h2>Kind krank ${jahr}</h2>${z("Verbraucht", u.kind_krank)}${start}
-      ${z("Verfügbar", `noch ${u.kind_krank_rest} von ${u.kind_krank_max}`, u.kind_krank_rest === 0 ? "rot" : "")}${voll}
+    <div class="card"${md("kind_krank")}><h2>Kind krank ${jahr}</h2>${wertZeile("Verbraucht", u.kind_krank)}${start}
+      ${wertZeile("Verfügbar", `noch ${u.kind_krank_rest} von ${u.kind_krank_max}`, u.kind_krank_rest === 0 ? "rot" : "")}${voll}
       <div class="knoepfe"><a class="btn" href="${LIMIT_WEG}/${jahr}">Limit ändern</a></div></div></div>`;
 }
 // ---- seiten/monatsnachweis.js ----
@@ -5361,7 +5731,7 @@ function nachweisWahl(j, m, mz, erster, kopfLeer) {
   const gewaehlt = `${j}-${pad(m)}`, pfad = `api/monatsnachweis/${j}/${m}${mz ? "/mit-zeiten" : ""}`, titel = `Monatsnachweis ${MONATE[m - 1]} ${j}`, q = nachweisAbfrage();
   const knoepfe = [["PDF", "pdf", "ex_pdf"], ["Word", "docx", "ex_office"]].filter(([, , mod]) => modulAn(mod));
   return `<section class="card" aria-labelledby="mn-titel"><h2 id="mn-titel">Monatsnachweis</h2>
-    <label for="mn-monat">Monat</label><div class="feld-heute"><select id="mn-monat" data-wechsel="nachweisMonatWaehlen">${nachweisMonate(erster, gewaehlt).map(w => `<option value="${w}"${w === gewaehlt ? " selected" : ""}>${MONATE[+w.slice(5) - 1]} ${w.slice(0, 4)}</option>`).join("")}</select><button type="button" class="heute-knopf" ${kl("nachweisHeute")}>Heute<span class="sr">: aktueller Monat</span></button></div>
+    ${auswahlHeute("mn-monat", "Monat", nachweisMonate(erster, gewaehlt).map(w => [w, `${MONATE[+w.slice(5) - 1]} ${w.slice(0, 4)}`]), gewaehlt, "nachweisMonatWaehlen", kl("nachweisHeute"), "aktueller Monat")}
     <label class="zeile" for="mn-zeiten"><span><span id="mn-zeiten-n">mit Beginn und Ende</span><br><small id="mn-zeiten-h">nimmt Kommen, Gehen und Pause dazu</small></span>
       <input type="checkbox" id="mn-zeiten" aria-labelledby="mn-zeiten-n" aria-describedby="mn-zeiten-h" data-wechsel="nachweisZeitenSchalten"${mz ? " checked" : ""}></label>
     ${kopfLeer ? `<p class="hinweis">Name, Arbeitgeber und Personalnummer trägst du unter <a href="#/einstellungen/person">${esc(weg("einstellungen", "person"))}</a> ein.</p>` : ""}
@@ -5393,8 +5763,67 @@ async function seiteMonatsnachweis() {
   if (nachweisEinmal.monat !== `${j}-${m}`) nachweisEinmal = {monat: `${j}-${m}`, name: null, datum: "", eigen: false, offen: {}};
   const [{monate}, n, kopf] = await Promise.all([api("GET", "/zeitraeume"), api("GET", `/monatsnachweis/${j}/${m}${nachweisAbfrage()}`), api("GET", "/nachweiskopf")]);
   const wahl = nachweisWahl(j, m, mz, monate[monate.length - 1], NACHWEIS_ANGABEN.every(([k]) => !kopf[k]));
-  if (!monate.includes(`${j}-${pad(m)}`)) return wahl + `<section class="card"><div class="leer">Noch keine Einträge in diesem Monat.</div><div class="knoepfe"><a class="btn prim" href="#/monat/${j}/${m}">Tag eintragen</a></div></section>`;
+  if (!monate.includes(`${j}-${pad(m)}`)) return wahl + `<section class="card">${leerHtml("Noch keine Einträge in diesem Monat.")}<div class="knoepfe"><a class="btn prim" href="#/monat/${j}/${m}">Tag eintragen</a></div></section>`;
   return wahl + nachweisUnterschriftKarte(kopf) + nachweisVorschau(n, mz);
+}
+// ---- seiten/suche.js ----
+"use strict";
+// Zeiterfassung. © 2026 David Saluda. Alle Rechte vorbehalten. Erstellt mit Unterstützung von KI (Claude, Anthropic).
+// Reiter „Suche“ (Auftrag A6, 25.11.2026): Tage nach Text in der Anmerkung, Art, Ort und Zeitraum finden (GET /api/suche); ein Treffer öffnet den Tag.
+const SUCHE_ARBEITSTAG = "arbeitstag";                                  // wie suche.ARBEITSTAG im Kern: die Art „" (gewöhnlicher Arbeitstag)
+const SUCHE_TEXT_MAX = 100;                                             // wie suche.TEXT_MAX
+const SUCHE_ORTE = [["", "Alle Orte"], ["ho", "Homeoffice"], ["dst", "Büro"]];
+const SUCHE_START = "Suchtext eingeben oder Filter wählen, dann „Suchen“ tippen.";
+const SUCHE_LEER = "Keine Tage gefunden. Ändere den Suchtext, die Filter oder den Zeitraum.";
+// Kriterien und letzte Antwort, solange die App offen ist: Zurück vom Tag zeigt dieselbe Liste wieder.
+let suchWahl = null, suchErgebnis = null;
+// Vorgabe: alles im laufenden Jahr.
+const sucheVorgabe = () => ({text: "", art: "", ort: "", von: `${heute.getFullYear()}-01-01`, bis: `${heute.getFullYear()}-12-31`});
+
+// Auswahl aus [Wert, Text]-Paaren mit dem gewählten Wert.
+const sucheAuswahl = (id, paare, gewaehlt) => `<select id="${id}">${paare.map(([w, t]) => `<option value="${w}"${w === gewaehlt ? " selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
+// Arten zur Wahl: alle, Arbeitstag und jede Art, deren Modul eingeschaltet ist.
+const sucheArten = () => [["", "Alle Arten"], [SUCHE_ARBEITSTAG, "Arbeitstag"], ...Object.entries(ARTEN).filter(([k]) => k && artAn(k))];
+// Art oder Orte eines Treffers als Text.
+const sucheArtOrt = t => t.art ? esc(ARTEN[t.art] || "") : orteText(t.ho, t.dst);
+// Eine Zeile je Tag: Datum, Art/Ort, Gesamtzeit, Notiz-Ausschnitt; antippen öffnet den Tag.
+function sucheZeile(t) {
+  return `<a class="treffer" href="#/tag/${esc(t.datum)}"><span class="treffer-kopf"><b>${esc(t.datum_text)}</b><span class="treffer-zeit">${esc(t.gesamt)}</span></span>
+    <span class="treffer-art">${sucheArtOrt(t)}</span>${t.notiz ? `<span class="treffer-notiz">${esc(t.notiz)}</span>` : ""}</a>`;
+}
+// Ergebnis: Anzahl, Zeilen und Hinweis, wenn nicht alle gezeigt sind; ohne Treffer der Leer-Text.
+function sucheErgebnisHtml(e) {
+  if (!e.anzahl) return leerHtml(SUCHE_LEER, "p");
+  const mehr = e.mehr ? `<p class="hinweis">Gezeigt sind die neuesten ${e.treffer.length}. Grenze den Zeitraum ein, um die übrigen zu sehen.</p>` : "";
+  return `<p class="treffer-zahl">${e.anzahl === 1 ? "1 Tag" : `${e.anzahl} Tage`} gefunden</p><div class="treffer-liste">${e.treffer.map(sucheZeile).join("")}</div>${mehr}`;
+}
+// Seite „Suche“: Formular mit den gemerkten Kriterien und darunter das letzte Ergebnis.
+async function seiteSuche() {
+  suchWahl ??= sucheVorgabe();
+  const w = suchWahl;
+  window.nachher = () => $("#s-text")?.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); sucheStarten(); } });
+  return `<div class="card suche"><h2>Tage suchen</h2>
+    <label for="s-text">Text in der Anmerkung</label><input id="s-text" type="search" maxlength="${SUCHE_TEXT_MAX}" value="${esc(w.text)}" autocomplete="off">
+    <label for="s-art">Art</label>${sucheAuswahl("s-art", sucheArten(), w.art)}
+    ${einOrt() ? "" : `<label for="s-ort">Ort</label>${sucheAuswahl("s-ort", SUCHE_ORTE, w.ort)}`}
+    <div class="reihe"><div><label for="s-von">Von</label><input id="s-von" type="date" ${ZEIT_KAL_GRENZEN} value="${esc(w.von)}"></div>
+      <div><label for="s-bis">Bis</label><input id="s-bis" type="date" ${ZEIT_KAL_GRENZEN} value="${esc(w.bis)}"></div></div>
+    <div class="knoepfe"><button type="button" class="prim" ${kl("sucheStarten")}>Suchen</button></div></div>
+    <div id="s-ergebnis" class="card" aria-live="polite">${suchErgebnis ? sucheErgebnisHtml(suchErgebnis) : leerHtml(SUCHE_START, "p")}</div>`;
+}
+// Liest die Kriterien aus dem Formular, fragt den Dienst und zeigt Laden, Ergebnis oder Fehler; die Eingaben bleiben stehen.
+async function sucheStarten() {
+  const feld = id => $("#" + id).value, ziel = $("#s-ergebnis");
+  suchWahl = {text: feld("s-text").trim(), art: feld("s-art"), ort: einOrt() ? "" : feld("s-ort"), von: feld("s-von"), bis: feld("s-bis")};
+  const abfrage = new URLSearchParams(Object.entries(suchWahl).filter(([, v]) => v));
+  ziel.innerHTML = `<div class="lade" role="status" aria-busy="true" aria-label="Sucht …"></div>`;
+  try {
+    suchErgebnis = await api("GET", "/suche?" + abfrage);
+    ziel.innerHTML = sucheErgebnisHtml(suchErgebnis);
+  } catch (e) {
+    suchErgebnis = null;
+    ziel.innerHTML = meldung(e.message);
+  }
 }
 // ---- seiten/hilfe.js ----
 "use strict";
@@ -5412,9 +5841,9 @@ const HILFE_KEIN_WERT = "–";                                  // steht für ei
 // Gruppen der Hilfe in fester Folge: [Schlüssel, Titel, Abschnitte]; jeder Abschnitt steht in genau einer Gruppe (Schnittstelle hilfe-schnitt.json).
 const HILFE_GRUPPEN = [
   ["erste_schritte", "Erste Schritte", ["zweck", "anfang", "aufbau", "uebersicht_karten", "uebersicht_heute", "uebersicht_anordnen", "startwerte", "demo", "rueckgaengig", "tastatur", "andere_rechner"]],
-  ["zeiten_buchen", "Zeiten buchen", ["buchen", "plus_taste", "beginn_korrigieren", "gehen_vergessen", "kurzbefehle", "tag_blatt", "vorlagen", "vermerk", "monat_raster", "wochenziel", "pause", "gleitzeit", "freizeitkonto", "gleitzeit_verlauf", "kappung", "zutun"]],
+  ["zeiten_buchen", "Zeiten buchen", ["buchen", "plus_taste", "beginn_korrigieren", "gehen_vergessen", "kurzbefehle", "tag_blatt", "vorlagen", "vermerk", "monat_raster", "suche_tage", "wochenziel", "pause", "kappzeit", "gleitzeit", "freizeitkonto", "gleitzeit_verlauf", "kappung", "zutun"]],
   ["abwesenheit", "Abwesenheit", ["urlaub", "zusatzurlaub", "resturlaub", "angespart", "familientage", "sondertage", "planung", "brueckentage", "feiertage", "eigene_feiertage", "jahreswechsel", "krank"]],
-  ["auswertung", "Auswertung", ["homeoffice_modus", "quote", "spielraum", "uebersicht", "jahresrueckblick", "monatsnachweis", "unterschrift", "export", "exporte"]],
+  ["auswertung", "Auswertung", ["homeoffice_modus", "quote", "quote_ampel", "spielraum", "uebersicht", "jahresrueckblick", "monatsnachweis", "unterschrift", "export", "exporte"]],
   ["daten_sync", "Daten & Sync", ["sicherung", "handy_sicherung", "daten_pruefen", "app_pruefen", "update", "neue_version", "web_ohne_server", "sync", "github", "anmeldedienst", "sync_aus", "geraet_entfernen"]],
   ["einstellungen", "Einstellungen", ["aussehen", "zeitformat", "abschnitte", "gueltigkeit", "stand_anders", "profile", "module", "zuruecksetzen", "personen", "admin"]],
   ["datenschutz", "Datenschutz", ["datenschutz"]]
@@ -5443,8 +5872,10 @@ const HILFE_WIKI = {
   vorlagen: "Bedienung-Zeiten-und-Stempeluhr#vorlagen-für-anmerkungen",
   vermerk: "Bedienung-Zeiten-und-Stempeluhr#dienstreise-und-fortbildung",
   monat_raster: "Bedienung-Zeiten-und-Stempeluhr#woche-und-monat",
+  suche_tage: "Bedienung-Zeiten-und-Stempeluhr#tage-suchen",
   wochenziel: "Bedienung-Zeiten-und-Stempeluhr#wochenziel",
   pause: "Bedienung-Zeiten-und-Stempeluhr#pause",
+  kappzeit: "Bedienung-Zeiten-und-Stempeluhr#kappzeit",
   gleitzeit: "Bedienung-Zeiten-und-Stempeluhr#gleitzeit-konto-und-freizeitkonto",
   freizeitkonto: "Bedienung-Zeiten-und-Stempeluhr#gleitzeit-konto-und-freizeitkonto",
   gleitzeit_verlauf: "Bedienung-Zeiten-und-Stempeluhr#gleitzeit-verlauf",
@@ -5464,6 +5895,7 @@ const HILFE_WIKI = {
   krank: "Bedienung-Krank#krankheit-und-attest",
   homeoffice_modus: "Bedienung-Homeoffice-Quote#homeoffice-modus",
   quote: "Bedienung-Homeoffice-Quote#so-rechnet-die-app-die-quote",
+  quote_ampel: "Bedienung-Homeoffice-Quote#quote-ampel",
   spielraum: "Bedienung-Homeoffice-Quote#ho-spielraum",
   uebersicht: "Bedienung-Homeoffice-Quote#homeoffice-übersicht",
   jahresrueckblick: "Bedienung-Homeoffice-Quote#jahresrückblick",
@@ -5503,36 +5935,38 @@ const hilfeWikiZeile = s => `<p class="hilfe-wiki">${wikiLink(HILFE_WIKI_TEXT, "
 // Kurz halten: 2 bis 4 Sätze mit den Werten der Person; Schritte, Tabellen und Sonderfälle stehen im Wiki. Nur die Datenschutz-Aussage ist länger (Pflicht).
 const HILFE_TEXTE = {
   zweck: {titel: "Wofür ist die App gedacht?", weg: "", text: `Sie hält fest, [[zwei_orte]]wann du im Homeoffice (HO) und wann im Büro gearbeitet hast[[/]][[kein]]wann du gearbeitet hast[[/]][[nur]]wann du im Homeoffice gearbeitet hast[[/]], und rechnet daraus {rechnet}. Alles liegt in deiner eigenen Datenbank, ohne Benutzerkonto und ohne Cloud.`},
-  anfang: {titel: "Wie fange ich an?", weg: "{weg_einstellungen_arbeitszeit}", text: `<p>Beim ersten Start fragt die Karte <b>Erster Start</b>, ob du die App schon auf einem anderen Gerät nutzt; dann holst du deine Daten über die Synchronisierung. Sonst wählst du eine Vorlage, dein Bundesland, die Arbeitszeit[[grenze]], deine Homeoffice-Grenze[[/]] und die Urlaubstage, alles änderst du später in den Einstellungen. Meldet „Fertig“ einen Fehler, springt die Einrichtung in den Schritt mit dem betroffenen Feld, sonst bietet die App einen kurzen Rundgang an. Nach „Später“ kannst du ihn hier jederzeit starten.</p><div class="knoepfe"><button type="button" data-klick="rundgangStart">Rundgang starten</button></div>`},
+  anfang: {titel: "Wie fange ich an?", weg: "{weg_einstellungen_arbeitszeit}", text: `<p>Beim ersten Start fragt die Karte <b>Erster Start</b>, ob du die App schon auf einem anderen Gerät nutzt; dann holst du deine Daten über die Synchronisierung. Sonst wählst du eine Vorlage, dein Bundesland, die Arbeitszeit[[grenze]], deine Homeoffice-Grenze[[/]] und die Urlaubstage, alles änderst du später in den Einstellungen. Meldet „Fertig“ einen Fehler, springt die Einrichtung in den Schritt mit dem betroffenen Feld, sonst bietet die App einen kurzen Rundgang an, nach einem Update einmal einen durch das Neue (abschaltbar unter {weg_einstellungen_aussehen}). Nach „Später“ kannst du ihn hier jederzeit starten.</p><div class="knoepfe"><button type="button" data-klick="rundgangStart">Rundgang starten</button></div>`},
   aufbau: {titel: "Wie ist die App aufgebaut?", weg: "", text: `<p>Bei dir hat die App {bereiche_zahl} Bereiche, manche mit Reitern oben:</p><ul>{bereiche}</ul><p>Am Handy stehen unten Übersicht, Zeit, die Stempel-Taste, {bereich_homeoffice} und Abwesenheit, den Rest öffnest du über das Menü oben, die Hilfe zur gezeigten Seite über das „?“ daneben; am Rechner steht alles samt „?“ in der Seitenleiste. [[kein]]Ohne Homeoffice heißt der Bereich Homeoffice bei dir „Jahr“. [[/]]Ein abgeschaltetes Modul fehlt ganz.</p>`},
   uebersicht_karten: {titel: "Was zeigt die Übersicht?", weg: "{weg_start}", text: `Oben steht die Karte <b>Heute</b> mit Datum und den Knöpfen zum Stempeln[[uebersicht_kacheln]], darunter Kacheln wie {uebersicht_kacheln}[[/]]; Kleine Kacheln stehen immer zu zweit nebeneinander, am Computer auch größere Karten, die Folge ändert „Kacheln anpassen“. [[quote]]Monat und Jahr zeigen deine Homeoffice-Quote als Ring[[grenze]]: Der Pfeil am Ring ist deine Grenze von {grenze} %, darunter stehen „noch … HO möglich“ und die Prognose zum Jahresende mit „Luft bis {grenze} %“[[/]]. [[/]][[grenze]]Liegt ein Monat oder die Prognose über der Grenze, steht eine Warnzeile darunter. [[/]]Ein Tipp auf eine Kachel öffnet ihre Seite[[gleitzeit]], „Gleitzeit“ die Woche gleich beim Gleitzeit-Verlauf[[/]].`},
   uebersicht_anordnen: {titel: "Kann ich die Kacheln anpassen?", weg: "{weg_einstellungen_aussehen} → Kacheln anpassen", text: `Du wählst, welche Karten die Übersicht zeigt und in welcher Folge; das gilt nur auf diesem Gerät. Die Karte „Heute“ steht immer oben, ab Werk danach die Kacheln Heute und Diese Woche, dann Gleitzeit, was zu tun ist[[quote]] und die Quoten; eine Warnung zur Grenze bleibt an der Stelle ihrer Quote, auch wenn du die Karte ausblendest[[/]].[[zutun]] Blendest du „Zu tun“ aus, ist es ganz aus: keine Einträge auf der Übersicht, auch keine dringenden, und keine Zahl am Symbol.[[/]] Schneller hin geht es mit <b>Kacheln anpassen</b> unten auf der Übersicht.`},
-  uebersicht_heute: {titel: "Was zeigt die Kachel Heute?", weg: "{weg_start}", text: `Die Kachel <b>Heute</b> zeigt, was du heute gearbeitet hast, und dein Tagessoll[[gleitzeit]], dazu den Saldo heute und den Verlauf der letzten 30 Tage[[/]]. Darunter steht, wann dein Tagessoll erreicht ist („Bis 16:12“) oder wie viel noch fehlt; an Wochenende und Feiertag steht „zählt zum Freizeitkonto“, an Abwesenheitstagen die Art. [[woche]]Die Kachel Diese Woche zeigt Ist und Saldo der Woche.[[/]][[gleitzeit]] Die Kachel Gleitzeit zeigt das Konto als Linie über das Jahr.[[/]]`},
+  uebersicht_heute: {titel: "Was zeigt die Kachel Heute?", weg: "{weg_start}", text: `Die Kachel <b>Heute</b> zeigt, was du heute gearbeitet hast, und dein Tagessoll[[gleitzeit]], dazu den Saldo heute[[/]]. Darunter steht, wann dein Tagessoll erreicht ist („Bis 16:12“) oder wie viel noch fehlt[[stempel]], bei laufender Uhr auch die <span class="am-stueck">10-Stunden-Grenze</span> (ab Werk 10 Stunden, folgt deiner Einstellung; das Band der Uhr auf den anderen Seiten nennt beides, Pause und gebuchte Zeit eingerechnet: „Soll erreicht um 16:30 · <span class="am-stueck">10-Stunden-Grenze</span> um 18:30“)[[/]]; an Wochenende und Feiertag steht „zählt zum Freizeitkonto“, an Abwesenheitstagen die Art. [[woche]]Die Kachel Diese Woche zeigt Ist und Saldo der Woche.[[/]][[gleitzeit]] Die Kachel Gleitzeit zeigt dein Konto und darunter den Gleitzeit-Verlauf der letzten 3 Wochen, wie auf der Seite Woche.[[/]]`},
   beginn_korrigieren: {titel: "Wie korrigiere ich den Beginn der Stempeluhr?", weg: "", text: `Läuft die Uhr, ändert <b>Beginn korrigieren</b> (Karte Heute, Blatt der Stempeluhr, Band oben) nur den Beginn: früher oder später, nie in der Zukunft, ohne Überschneidung mit anderen Einträgen; <b>Rückgängig</b> stellt ihn wieder her. Gehen ist ab Werk bis 23:59 am Tag des Beginns möglich. Läuft die Uhr über Mitternacht, fragt die App beim nächsten Öffnen, wann du gegangen bist. Wer über Mitternacht stempelt, schaltet unter {weg_einstellungen_arbeitszeit} „Stempeluhr über Mitternacht erlauben“ ein.`},
   startwerte: {titel: "Ich fange mitten im Jahr an. Was trage ich ein?", weg: "{weg_einstellungen_person}", text: `Unter „Erfassung gültig ab“ trägst du das Datum ein, ab dem du mit der App erfasst, und deinen Stand des Jahres bis zum Tag davor: [[zwei_orte]]„HO-Zeit“ und „Büro-Zeit“[[/]][[kein]]„Büro-Zeit“[[/]][[nur]]„HO-Zeit“[[/]][[start_tage]], schon genommene {start_tage}[[/]][[gleitzeit]] und den „Gleitzeit-Saldo“[[/]]; dann „Startwerte speichern“. Soll, Ist und Gleitzeit zählen erst ab dem Datum; Tage davor bleiben sichtbar, zählen aber nicht. Die Startwerte gelten nur im Jahr des Datums.`},
   demo: {titel: "Demo-Modus", weg: "{weg_einstellungen} → Demo-Modus", text: `Mit Beispieldaten probierst du die App aus, ohne deine echten Daten anzufassen; die Demo nutzt eine eigene Datenbank. Die Beispieltage sind zufällig und passen zu deinen Regeln. Die Karte gibt es nur, solange die App leer ist und nicht synchronisiert; „Demo beenden“ führt zurück.`},
-  rueckgaengig: {titel: "Kann ich etwas rückgängig machen?", weg: "", text: `Nach dem Speichern zeigt unten eine Leiste {rueck_sekunden} Sekunden lang <b>Rückgängig</b>; am Rechner geht auch <b>Strg+Z</b> (Mac: ⌘+Z). Das gilt für Tage[[planung]] und geplanten Urlaub[[/]][[stempel]], auch für Kommen mit der Stempel-Taste, Gehen und Beginn korrigieren[[/]]. Es gibt nur eine Stufe, der nächste Schritt ersetzt den vorigen.`},
-  tastatur: {titel: "Bedienung mit der Tastatur", weg: "", text: `Mit <b>Tab</b> erreichst du alle Knöpfe, Felder und Tage, <b>Enter</b> oder die <b>Leertaste</b> öffnet sie. Die <b>Pfeiltasten</b> blättern, <b>T</b> springt zu heute, <b>Esc</b> schließt ein Blatt, und solange es offen ist, bleibt <b>Tab</b> im Blatt. Der erste Druck auf Tab zeigt oben links „Zum Inhalt springen“: Damit überspringst du das Menü.`},
+  rueckgaengig: {titel: "Kann ich etwas rückgängig machen?", weg: "", text: `Nach dem Speichern zeigt unten eine Leiste {rueck_sekunden} Sekunden lang <b>Rückgängig</b>; am Rechner geht auch <b>Strg+Z</b> (Mac: ⌘+Z). Das gilt für Tage[[planung]] und geplanten Urlaub[[/]][[stempel]], auch für Kommen mit der Stempel-Taste, Gehen und Beginn korrigieren[[/]]. Es gibt nur eine Stufe, der nächste Schritt ersetzt den vorigen[[sicherung]]; geleerte Tage und gelöschte Einträge holst du aber 30 Tage lang aus dem <b>Papierkorb</b> unter {weg_sicherung} zurück[[/]].`},
+  tastatur: {titel: "Bedienung mit der Tastatur", weg: "", text: `Mit <b>Tab</b> erreichst du alle Knöpfe, Felder und Tage, <b>Enter</b> oder die <b>Leertaste</b> öffnet sie. Die <b>Pfeiltasten</b> blättern, <b>T</b> springt zu heute, <b>N</b> trägt heute ein, <b>Esc</b> schließt ein Blatt, und solange es offen ist, bleibt <b>Tab</b> im Blatt. Der erste Druck auf Tab zeigt oben links „Zum Inhalt springen“: Damit überspringst du das Menü.`},
   andere_rechner: {titel: "Gibt es die App auch für andere Rechner?", weg: "", text: `Als eigenes Programm gibt es die App für Windows und Android. Auf allen anderen Rechnern nimmst du die Web-App im Browser, oder du betreibst sie selbst als Server (Docker), z. B. auf einer NAS.`},
-  buchen: {titel: "Wie buche ich meine Zeit?", weg: "[[monat]]{weg_monat}[[sonst]]{weg_woche}[[/]]", text: `[[stempel]]Mit der <b>Stempeluhr</b>: Kommen beim Anfangen, Gehen am Ende, am Handy mit der Stempel-Taste unten, sonst mit „Kommen“ in der Übersicht. Gebucht wird auf den Tag des Beginns (über Mitternacht siehe unten); mehrere Einträge (Kommen und Gehen) an einem Tag stehen unter {weg_tag} einzeln (Ort, von–bis, Dauer) und im Bearbeiten-Formular als Blöcke („+ Block“), die Lücke dazwischen zählt nicht als Pause, und der Monatsnachweis mit Beginn und Ende und die CSV haben je Block eine Zeile mit der Tagessumme in der letzten. Solange die Uhr läuft, zählt der heutige Tag unter {weg_tag} sie in Ist und Saldo mit (abzüglich Pause nach Regel, wie beim Gehen) und zeigt eine Zeile „läuft“; ein Tipp darauf öffnet die Stempeluhr. Vergessenes trägst du im Kalender nach, „Heute eintragen“ in der Übersicht öffnet den heutigen Tag.[[sonst]]Die Stempeluhr ist bei dir aus. Du trägst deine Zeit im Tag ein; „Heute eintragen“ in der Übersicht öffnet den heutigen Tag.[[/]]`},
+  buchen: {titel: "Wie buche ich meine Zeit?", weg: "[[monat]]{weg_monat}[[sonst]]{weg_woche}[[/]]", text: `[[stempel]]Mit der <b>Stempeluhr</b>: Kommen beim Anfangen, Gehen am Ende, am Handy mit der Stempel-Taste unten, sonst mit „Kommen“ in der Übersicht. Gebucht wird auf den Tag des Beginns (über Mitternacht siehe unten); mehrere Einträge (Kommen und Gehen) an einem Tag stehen unter {weg_tag} einzeln (Ort, von–bis, Dauer), auch auf deinen anderen Geräten, und im Bearbeiten-Formular als Blöcke („+ Block“), die Lücke dazwischen zählt auf die Pflichtpause an, und der Monatsnachweis mit Beginn und Ende und die CSV haben je Block eine Zeile mit der Tagessumme in der letzten. Solange die Uhr läuft, zählt der heutige Tag unter {weg_tag} sie in Ist und Saldo mit (so, wie „Gehen“ jetzt buchen würde, mit Pflichtpause und Kappzeit) und zeigt eine Zeile „läuft“; ein Tipp darauf öffnet die Stempeluhr. Vergessenes trägst du im Kalender nach, „Heute eintragen“ in der Übersicht öffnet den heutigen Tag.[[sonst]]Die Stempeluhr ist bei dir aus. Du trägst deine Zeit im Tag ein; „Heute eintragen“ in der Übersicht öffnet den heutigen Tag.[[/]]`},
   plus_taste: {titel: "Was macht die Stempel-Taste?", weg: "", text: `Am Handy steht die Stempel-Taste unten in der Mitte und zeigt mit ihrem Symbol, was als Nächstes kommt[[stempel]]; am Rechner stempelst du mit Kommen und Gehen in der Karte Heute der Übersicht[[/]]. [[stempel]]Bei Kommen [[einort]]stempelt schon der erste Tipp, weil es bei dir nur einen Ort gibt[[sonst]]zeigt ein Tipp die Wahl Homeoffice oder Büro, der zweite stempelt[[/]]. Gehen bucht sofort aus (der Knopf nennt deinen Beginn, z. B. „Gehen (seit 07:30)“), die Pause kommt aus deiner Pausenregel ({pausenregel}); läuft die Uhr seit einem früheren Tag, öffnet die Taste das Blatt der Stempeluhr, damit du die echte Endzeit einträgst.[[sonst]]Die Stempeluhr ist bei dir aus, darum öffnet die Taste „Heute eintragen“.[[/]]`},
   gehen_vergessen: {titel: "Ich habe vergessen zu gehen", weg: "", text: `Läuft die Stempeluhr noch von einem früheren Tag oder seit über 10 Stunden, fragt die App beim Öffnen, wann du gegangen bist. Ohne die Einstellung „Stempeluhr über Mitternacht erlauben“ gilt als Ende höchstens 23:59 am Tag des Beginns. Die Uhrzeit ist nach deinem Tagessoll vorbelegt. „Später“ fragt erst beim nächsten Öffnen der App wieder.`},
   kurzbefehle: {titel: "Was machen die Kurzbefehle am App-Symbol (Android)?", weg: "", text: `Drück lange auf das Symbol der App: Es erscheinen <b>Kommen Homeoffice</b>, <b>Kommen Büro</b> und <b>Gehen</b> (ab Android 7.1). Ein Tipp stempelt wie die Stempel-Taste. Passt der Kurzbefehl gerade nicht, bucht die App nichts und öffnet die Stempeluhr.`},
-  tag_blatt: {titel: "Wie trage ich einen Tag schnell ein?", weg: "{weg_tag}", text: `Tippe auf einen Tag: Die Schnellwahl ({schnellwahl}, dazu „Mehr“) trägt den ganzen Tag mit deinem Tagessoll ein. Unter <b>Einzelheiten</b> stehen Kommen, Gehen, Pause, [[zwei_orte]]der gemischte Tag, [[/]]die Anmerkung und der Vermerk. Am Rechner steht der Tag rechts neben dem Kalender, Enter speichert.`},
+  tag_blatt: {titel: "Wie trage ich einen Tag schnell ein?", weg: "{weg_tag}", text: `Ein Tipp auf einen Tag in Woche oder Monat öffnet ihn; oben stehen Soll und Ist, darunter jeder Eintrag für sich: Antippen ändert oder löscht nur diesen, „+ Eintrag“ legt einen weiteren an, auch an einem Tag mit Zeit (nie über schon gebuchte Zeit oder die laufende Stempeluhr), und Stunden ohne Uhrzeit sind ein eigener Eintrag. <b>Bearbeiten</b> öffnet den ganzen Tag: Die Schnellwahl ({schnellwahl}, dazu „Mehr“) trägt ihn mit deinem Tagessoll ein. Unter <b>Einzelheiten</b> stehen Kommen, Gehen, Pause, [[zwei_orte]]der gemischte Tag, [[/]]die Anmerkung und der Vermerk. Am Rechner steht der Tag rechts daneben, Enter speichert.`},
   vorlagen: {titel: "Vorlagen für Anmerkungen", weg: "{weg_einstellungen_person} → Vorlagen für Anmerkungen", text: `Häufige Anmerkungen wie „Dienstreise“ musst du nicht tippen: Tipp am Tag unter „Anmerkung“ auf eine Vorlage. Die Vorlagen pflegst du in den Einstellungen; sie gelten auf allen Geräten.`},
   vermerk: {titel: "Wie trage ich Dienstreise oder Fortbildung ein?", weg: "", text: `Das ist keine eigene Art, sondern ein <b>Vermerk</b> unter <b>Einzelheiten</b> am Tag. Er ändert nichts an Quote, Soll, Ist und Gleitzeit und steht in den Exporten. [[zutun]]Solange du nicht „Zeiten geprüft“ ankreuzt, steht der Tag in „Zu tun“.[[sonst]]Die Karte „Zu tun“ ist bei dir aus, darum erinnert dich die App nicht.[[/]]`},
-  monat_raster: {titel: "Wie lese ich den Monat?", weg: "{weg_monat}", text: `Der Monat öffnet als Kalender; jeder Tag hat eine Farbe und dazu einen Buchstaben, die Legende steht darunter. Mit <b>Raster | Liste</b> wechselst du zur Liste, die App merkt sich die Wahl auf diesem Gerät. Ein Tipp auf einen Tag öffnet ihn.`},
-  wochenziel: {titel: "Was zeigt das Wochenziel?", weg: "{weg_woche}", text: `In der Woche zeigt ein Balken, wie viel vom Wochensoll geschafft ist; der Strich markiert das Soll bis heute. Das <b>Tagesziel</b> („Bis 16:12 für dein Tagessoll“, Pause eingerechnet, höchstens 10 Stunden am Tag) steht in der Kachel Heute der Übersicht[[stempel]] und wechselt bei laufender Uhr mit der Uhrzeit[[/]].`},
-  pause: {titel: "Pause und Höchstarbeitszeit", weg: "{weg_einstellungen_arbeitszeit}", text: `Die Pause kommt aus deiner Pausenregel: <b>{pausenregel}</b>. [[pausen]]Jede Stufe zählt anteilig: Über {pause_ab} Std. sind es {pause_dauer}, bei {pause_zwischen} genau {pause_zwischen_min} Minuten, ab {pause_voll} die volle Pause.[[sonst]]Bei dir gilt keine Pausenregel, die App bucht keine Pause.[[/]] Mehr als 10 Stunden am Tag nimmt die App nur mit „Über 10 Stunden freigegeben“ an, mehr als 24 nie.`},
+  monat_raster: {titel: "Wie lese ich den Monat?", weg: "{weg_monat}", text: `Der Monat öffnet als Kalender; jeder Tag hat eine Farbe und dazu einen Buchstaben, die Legende steht darunter. Mit <b>Raster | Liste</b> wechselst du zur Liste (ein späterer Tag ohne Eintrag zeigt dort blass sein Soll), die App merkt sich die Wahl auf diesem Gerät. Ein Tipp auf einen Tag öffnet die Seite Tag. Am Handy blätterst du in Tag, Woche und Monat auch durch Wischen nach links oder rechts.`},
+  suche_tage: {titel: "Wie finde ich einen Tag wieder?", weg: "{weg_suche}", text: `Tippe oben auf die <b>Lupe</b> oder wähle Zeit › Suche (mit Abmelden-Knopf fehlt die Lupe, am Handy auch auf Seiten mit Zurück-Pfeil, dort mit beiden auch „Heute im Monat“; dann führt „Heute“ auf der Seite Monat zum heutigen Tag). Du suchst nach einem Wort in der Anmerkung, nach Art[[zwei_orte]], Ort[[/]] und Zeitraum (ab Werk das laufende Jahr). Je Tag steht eine Zeile mit Datum, Art oder Ort, Zeit und Anmerkung, ein Tipp darauf öffnet den Tag.[[zwei_orte]] Ein Tag mit Homeoffice und Büro gilt als Büro-Tag.[[/]]`},
+  wochenziel: {titel: "Was zeigt das Wochenziel?", weg: "{weg_woche}", text: `In der Woche zeigt ein Balken, wie viel vom Wochensoll geschafft ist; der Strich markiert das Soll bis heute. Das <b>Tagesziel</b> („Bis 16:12 für dein Tagessoll“, Pause eingerechnet, höchstens bis zur Tagesgrenze: ab Werk 10 Stunden, folgt deiner Einstellung) steht in der Kachel Heute der Übersicht[[stempel]] und wechselt bei laufender Uhr mit der Uhrzeit[[/]].`},
+  pause: {titel: "Pause und Tagesgrenze", weg: "{weg_einstellungen_arbeitszeit}", text: `Die Pflichtpause kommt aus deiner Pausenregel: <b>{pausenregel}</b>. [[pausen]]Lücken zwischen deinen Einträgen und Pausen von Hand zählen an, nur der Rest geht vom letzten Eintrag ab; jede Stufe zählt anteilig, über {pause_ab} Std. sind es {pause_dauer}, bei {pause_zwischen} genau {pause_zwischen_min} Minuten, ab {pause_voll} die volle Pause.[[sonst]]Bei dir gilt keine Pausenregel, die App zieht keine Pause ab.[[/]] [[stempel]]„Pause“ an der Stempeluhr bucht Gehen, „Weiter“ wieder Kommen; die Lücke dazwischen ist deine Pause.[[/]] Mehr als 24 Stunden nimmt die App nie an, über der Tagesgrenze siehe Kappzeit.`},
+  kappzeit: {titel: "Was ist Kappzeit?", weg: "{weg_einstellungen_arbeitszeit}", text: `Kappzeit ist gearbeitete Zeit, die nicht zählt: vor dem Beginn und nach dem Ende der Regelarbeitszeit (ab Werk 06:00 bis 20:00, auch mit Freigabe) und, ohne „Über 10 Stunden freigegeben“, alles über der Tagesgrenze (ab Werk 10 Stunden nach der Pause). Die Seite Tag zeigt sie unter Soll und Ist mit dem Grund; die Monatsdatei (PDF, Excel), der Monatsnachweis mit Zeiten und die CSV „Alle Tage“ haben dann eine Spalte Kappzeit. Beides stellst du unter {weg_einstellungen_arbeitszeit} ein oder ab, mit „gilt ab“ wie die anderen Regeln. Tage vor dem 26.11.2026 rechnen wie bisher.`},
   gleitzeit: {titel: "[[gleittage+gleitzeit]]Was ist der Unterschied zwischen Gleittagen und Gleitzeit-Konto?[[/]][[gleittage+!gleitzeit]]Was sind Gleittage?[[/]][[!gleittage+gleitzeit]]Was ist das Gleitzeit-Konto?[[/]]", weg: "[[gleitzeit]]{weg_einstellungen_person}[[/]]", text: `[[gleittage]][[keine_gleittage]]<b>Gleittage</b> sind ganze freie Tage; bei dir sind keine vorgesehen.[[sonst]]<b>Gleittage</b> sind ganze freie Tage, höchstens <b>{gleittage_max}</b> im Jahr.[[/]][[/]][[gleittage+gleitzeit]] [[/]][[gleitzeit]]Das <b>Gleitzeit-Konto</b> ist Ist minus Soll über alle Tage plus dein Anfangsstand. Stimmt der Stand nicht, trägst du ihn mit Datum neu ein.[[/]]`},
   freizeitkonto: {titel: "Freizeitkonto und Wochenendarbeit", weg: "{weg_einstellungen_person}", text: `Arbeit an einem Samstag, Sonntag oder Feiertag zählt nicht zur Gleitzeit, sondern zum <b>Freizeitkonto</b>. Abgebaut wird es mit der Art <b>Freizeitausgleich</b> an einem Arbeitstag. Den Startstand legst du in den Einstellungen fest.`},
-  gleitzeit_verlauf: {titel: "Was zeigt der Gleitzeit-Verlauf?", weg: "{weg_woche}", text: `Die Karte <b>Gleitzeit-Verlauf</b> in der Woche zeigt dein Gleitzeit-Konto über das Jahr[[gleitzeit_grenzen]], mit Grenzlinien bei {gleitzeit_linien}[[/]]. Links stehen die Stunden, die Nulllinie ist kräftiger; unten stehen die Kalenderwochen (am Handy alle 10, am Rechner alle 5). [[zutun]][[gleitzeit_grenzen]]Liegt das Konto darüber, steht ein Hinweis in „Zu tun“.[[/]][[sonst]]Die Karte „Zu tun“ ist bei dir aus, darum gibt es keinen Hinweis.[[/]][[zutun]] Die Grenzen stellst du bei den Regeln ein; 0 heißt kein Hinweis.[[/]]`},
+  gleitzeit_verlauf: {titel: "Was zeigt der Gleitzeit-Verlauf?", weg: "{weg_woche}", text: `Die Karte <b>Gleitzeit-Verlauf</b> zeigt den Stand deines Gleitzeit-Kontos: auf der Seite Tag die letzten 10 Tage, in der Woche die letzten 3 Wochen, im Monat die letzten 3 Monate, auf der Seite Jahr das ganze Jahr[[gleitzeit_grenzen]], mit Grenzlinien bei {gleitzeit_linien}[[/]]. Links stehen die Stunden, die Nulllinie ist kräftiger; unten stehen Tage, Kalenderwochen oder Monate; die laufende Uhr zählt hier nicht mit. [[zutun]][[gleitzeit_grenzen]]Liegt das Konto darüber, steht ein Hinweis in „Zu tun“.[[/]][[sonst]]Die Karte „Zu tun“ ist bei dir aus, darum gibt es keinen Hinweis.[[/]][[zutun]] Die Grenzen stellst du bei den Regeln ein; 0 heißt kein Hinweis.[[/]]`},
   kappung: {titel: "Was ist die Kappung der Gleitzeit?", weg: "{weg_einstellungen_arbeitszeit}", text: `Ist die <b>Kappung der Gleitzeit</b> an, verfällt mit Ablauf des Stichtags ({kappung_stichtag}) das Plus über der Grenze ({kappung_grenze} Std.); ein Minus bleibt, das Freizeitkonto auch. Eine <b>genehmigte Übernahme</b> trägst du je Jahr darunter ein, sie bleibt zusätzlich. Ab Werk ist die Kappung nur bei „Beamte Bayern“ an, zum ersten Mal 2027. [[zutun]]Vier Wochen vorher warnt „Zu tun“.[[/]]`},
-  zutun: {titel: "Was zeigt die Karte „Zu tun“?", weg: "{weg_start}", text: `Die Karte in der Übersicht sammelt, worum du dich kümmern solltest: <b>rot</b> ist dringend, <b>gelb</b> bald. [[sicherung]]Nach {sicherung_tage} Tagen ohne Sicherung erinnert sie dich.[[/]] [[gleitzeit+gleitzeit_grenzen]]Liegt dein Gleitzeit-Konto über {gleitzeit_grenzen}, meldet sie das.[[/]] „Später“ blendet einen Eintrag 7 Tage aus, „Nicht mehr zeigen“ für immer; „Nicht mehr zeigen“ gibt es nicht für rote Einträge.`},
+  zutun: {titel: "Was zeigt die Karte „Zu tun“?", weg: "{weg_start}", text: `Die Karte in der Übersicht sammelt, worum du dich kümmern solltest: <b>rot</b> ist dringend, <b>gelb</b> bald[[monat]]; fehlen mehrere Arbeitstage, öffnet je Tag ein Knopf den Tag zum Nachtragen (bei mehr als 8 erst die letzten 8, „Alle Tage“ zeigt alle)[[/]]. [[sicherung]]Nach {sicherung_tage} Tagen ohne Sicherung erinnert sie dich.[[/]] [[gleitzeit+gleitzeit_grenzen]]Liegt dein Gleitzeit-Konto über {gleitzeit_grenzen}, meldet sie das.[[/]] „Später“ blendet einen Eintrag 7 Tage aus, „Nicht mehr zeigen“ für immer; „Nicht mehr zeigen“ gibt es nicht für rote Einträge.`},
   urlaub: {titel: "Wie funktioniert der Urlaub?", weg: "{weg_urlaub} → Erweitert", text: `Dein Anspruch: <b>{urlaub_tage} Tage</b> im Jahr, wenn du für ein Jahr keinen eigenen Wert einträgst. Der Resturlaub geht von selbst ins nächste Jahr (mit Frist, siehe unten), den Übertrag kannst du von Hand korrigieren. Halbe Tage gibt es nicht.`},
   zusatzurlaub: {titel: "Zusatzurlaub (z. B. bei Schwerbehinderung)", weg: "{weg_einstellungen_arbeitszeit}", text: `Zusatzurlaub erhöht den Jahresanspruch (Seite Urlaub: „davon Zusatzurlaub“), ab Werk gibt es keinen; bei <b>Schwerbehinderung</b> sind es 5 Tage bei 5 Arbeitstagen pro Woche, sonst anteilig (§ 208 SGB IX, für Beamte Bayern genauso). Beginnt oder endet sie im Jahr, gibt es 1/12 je vollem Monat, jeder Bruchteil zu deinen Gunsten aufgerundet (4,17 auf 5); wechseln deine Arbeitstage, zählt die Woche mit mehr Tagen, und der <b>eigene Wert</b> (0 bis 30 Tage) gilt für das ganze Jahr. Genommen wird erst ein Rest aus dem Vorjahr, dann der Zusatzurlaub, dann der normale Urlaub; ein Rest an Zusatzurlaub wird nicht angespart, bei <b>Beamten Bayern</b> verfällt er am 30.06. Gleichgestellte (GdB 30/40 mit Gleichstellung) haben keinen Zusatzurlaub.`},
   resturlaub: {titel: "Bis wann gilt mein Resturlaub?", weg: "{weg_urlaub} → Erweitert", text: `Ab dem Urlaubsjahr 2025 gilt der Resturlaub nur bis zu einer Frist, je nach <b>Dienstverhältnis</b> (eigene Wahl unter {weg_einstellungen_arbeitszeit}, gilt ab 1.1. des Jahres); Urlaub vor der Frist nimmt zuerst den Resturlaub, „Zu tun“ erinnert sechs Wochen vorher. <b>Beamte Bayern:</b> Er gilt bis 30.06., danach spart die App ihn selbst an (höchstens die Hälfte des Jahresurlaubs ohne Zusatzurlaub in ganzen Tagen, höchstens 15 Tage, nutzbar ab 01.07.); was darüber liegt oder ohne das Modul „Angesparter Urlaub“ übrig ist, verfällt. <b>Eigene Frist</b> (andere Beamte, etwa im Bund oder in anderen Ländern): Er gilt bis zu dem Tag, den du einträgst (nicht der 29.02.), danach wird er wie bei Beamten in Bayern angespart, wenn du das wählst (nur mit dem Modul „Angesparter Urlaub“), sonst verfällt er; die Kappung der Gleitzeit ist dabei ab Werk aus. <b>Angestellte und andere:</b> Er gilt bis 31.03. und verfällt danach voraussichtlich (nur, wenn dein Arbeitgeber vorher darauf hingewiesen hat), außer du setzt „Resturlaub behalten“.`},
-  angespart: {titel: "Wie funktioniert angesparter Urlaub?", weg: "{weg_urlaub} → Erweitert", text: `Angesparter Urlaub gilt vor allem für Beamte, zum Beispiel in Bayern (UrlMV). Er wird als Konto je Herkunftsjahr geführt und mit der Art „Angesparter Urlaub“ genommen, das älteste Konto zuerst. Für Beamte Bayern legt die App das Konto nach dem 30.06. selbst an. Brauchst du ihn nicht, schalte das Modul unter <b>{weg_einstellungen_module}</b> ab.`},
+  angespart: {titel: "Wie funktioniert angesparter Urlaub?", weg: "{weg_urlaub} → Erweitert", text: `Angesparter Urlaub gilt vor allem für Beamte, zum Beispiel in Bayern (UrlMV). Er wird als Konto je Herkunftsjahr geführt und mit der Art „Angesparter Urlaub“ genommen, das älteste Konto zuerst[[zutun]]; 90 Tage vor dem Verfall erinnert „Zu tun“ mit Datum[[/]]. Für Beamte Bayern legt die App das Konto nach dem 30.06. selbst an. Brauchst du ihn nicht, schalte das Modul unter <b>{weg_einstellungen_module}</b> ab.`},
   familientage: {titel: "Familientage", weg: "{weg_urlaub} → Erweitert", text: `Familientage gelten vor allem für Beamte, zum Beispiel in Bayern: Du tauschst 10 % der Arbeitszeit gegen bis zu {familientage_max} freie Tage im Jahr. Sie sind ab Werk aus, du schaltest sie je Jahr ein. Brauchst du sie nicht, schalte das Modul unter <b>{weg_einstellungen_module}</b> ab.`},
   sondertage: {titel: "[[sonderurlaub+kind_krank]]Was sind Sonderurlaub und Kind krank?[[/]][[sonderurlaub+!kind_krank]]Was ist Sonderurlaub?[[/]][[!sonderurlaub+kind_krank]]Was ist Kind krank?[[/]]", weg: "{weg_sondertage}", text: `[[sonderurlaub+kind_krank]]Sonderurlaub und Kind krank sind eigene Arten[[sonst]][[sonderurlaub]]Sonderurlaub ist eine eigene Art[[sonst]]Kind krank ist eine eigene Art[[/]][[/]] für einen ganzen Arbeitstag: Er gilt als erfüllt wie Urlaub, vom Urlaub geht nichts ab. [[kind_krank]][[kk_eigen]]Für Kind krank hast du {kind_krank_max} Tage im Jahr selbst eingetragen.[[sonst]]Kind krank hat ein Jahreslimit. Bei dir: {kind_krank_dienst}, also {kind_krank_max} Tage im Jahr {jahr}.[[/]] Die Zahlen folgen dem Gesetz (Stand 19.11.2026), können sich ändern und sind keine Rechtsauskunft; die Vorgabe wählst du unter {weg_einstellungen_arbeitszeit}, dann zeigt das Feld ihre Tage für das gezeigte Jahr (bei „Eigener Wert“ bleibt die Zahl).[[/]]`},
   planung: {titel: "Urlaub planen", weg: "{weg_urlaub} → Geplant → Urlaub planen", text: `Hier trägst du kommende Tage ein ({plan_arten}): Im Blatt „Urlaub planen“ wählst du die Art, tippst im Monat den ersten und dann den letzten Tag an und bestätigst mit „Eintragen“. Die Vorschau zeigt, wie viele Tage abgehen, Wochenenden und Feiertage zählen nicht. Ab 1.11. starten Urlaub und Sondertage im Folgejahr (zurück mit ‹), im Dezember erinnert „Zu tun“ an die Planung des Folgejahres. <b>In Kalender übernehmen</b> gibt die Zeiträume an den Kalender deines Geräts.`},
@@ -5543,13 +5977,14 @@ const HILFE_TEXTE = {
   krank: {titel: "Krankheit und Attest", weg: "{weg_krank}", text: `Zusammenhängende Kranktage bilden eine Phase; nach 3 Tagen trägst du das Attest-Datum ein. Kranktage zählen nur an Arbeitstagen. <b>Krank im Dienst</b> ist kein Kranktag: Die gearbeitete Zeit zählt als {ort_arbeit}, die fehlende Zeit bis zum Tagessoll füllt die App auf[[quote]], für die Quote zählt nur die gearbeitete Zeit[[/]].`},
   homeoffice_modus: {titel: "Homeoffice: mit Grenze, ohne Grenze, kein oder nur Homeoffice", weg: "{weg_einstellungen_arbeitszeit}", text: `Bei den Regeln stellst du ein, was für dich gilt, jetzt: <b>{ho_modus}</b>. <b>Mit Grenze</b> rechnet die App die Quote und warnt, <b>ohne Grenze</b> steht die Quote nur zur Info da. Bei <b>kein Homeoffice</b> gibt es nur Büro, bei <b>nur Homeoffice</b> keine Quote. Schon eingetragene Zeiten bleiben erhalten.`},
   quote: {titel: "[[grenze]]Was bedeutet die Homeoffice-Quote und die Grenze?[[sonst]]Was bedeutet die Homeoffice-Quote?[[/]]", weg: "[[grenze]]{weg_horest}[[sonst]]{weg_jahr}[[/]]", text: `Die Quote ist die Homeoffice-Zeit geteilt durch die ganze Arbeitszeit, minutengenau. [[grenze]]Die Grenze liegt bei <b>{grenze} %</b>: Genau {grenze} % sind erlaubt, rot wird es erst darüber.[[sonst]]Bei dir gibt es keine Grenze, die Quote steht nur zur Info da.[[/]] Ein Tag mit Homeoffice und Büro zählt als Büro-Tag.[[krank]] Bei „Krank im Dienst“ zählt nur die gearbeitete Zeit.[[/]]`},
+  quote_ampel: {titel: "Was zeigt die Quote-Ampel?", weg: "{weg_monat}", text: `Die Ampel zeigt, wie viel Büro-Zeit du im laufenden Monat noch brauchst, damit die Quote am Monatsende nicht über {grenze} % liegt. Gerechnet wird mit dem Soll der restlichen Arbeitstage (Urlaub und Feiertage zählen nicht als Arbeitstage), eine laufende Stempeluhr zählt mit. <b>Im Rahmen</b>: keine Büro-Zeit mehr nötig; <b>Büro-Zeit nötig</b>: mit der genannten Büro-Zeit noch zu schaffen; <b>Nicht zu halten</b>: auch mit Büro an allen restlichen Tagen nicht mehr zu schaffen. Du findest sie auf der Seite Monat und als Kachel auf der Übersicht (unter „Kacheln anpassen“ ein- und ausblendbar).`},
   spielraum: {titel: "Was zeigt „HO-Spielraum“?", weg: "{weg_horest}", text: `Der Spielraum zeigt, wie viel Homeoffice du noch dazunehmen kannst, ohne über {grenze} % zu kommen, wenn du an den restlichen Tagen nach Soll arbeitest. Die <b>Jahres-Prognose</b> nimmt eine feste Zahl Büro-Tage pro Woche an (0 bis 5 oder „Automatisch“ nach dem Schnitt deiner gebuchten Wochen) und zeigt die Quote zum Jahresende.`},
   uebersicht: {titel: "Was steht in der Homeoffice-Übersicht?", weg: "{weg_steuer}", text: `Pro Jahr stehen darin die Zahl der {uebersicht_tage} und die Stunden[[quote]] mit der Quote[[/]].[[krank]] Die Kranktage stehen zusätzlich einzeln mit Attest-Datum.[[/]]`},
   jahresrueckblick: {titel: "Was zeigt der Jahresrückblick?", weg: "{weg_jahr}", text: `Die Seite Jahr zeigt [[quote]]Quote, [[/]]Stunden[[krank]], Kranktage[[/]][[gleitzeit]] und den Verlauf des Gleitzeit-Kontos[[/]].[[ex_pdf]] „Jahres-PDF“ speichert den Rückblick mit allen Monaten.[[sonst]] Darunter stehen alle Monate als Tabelle.[[/]]`},
   monatsnachweis: {titel: "Was steht im Monatsnachweis?", weg: "{weg_monatsnachweis}", text: `Der Nachweis für deinen Arbeitgeber (PDF oder Word) enthält jeden Tag mit Stunden und Anmerkung, die Summen und oben Name, Arbeitgeber und Personalnummer aus den Einstellungen. Quote, Homeoffice und Büro stehen nicht darin, Kranktage nur als „abwesend“. Deine Anmerkung steht wörtlich darin, schreib dort also nichts, was dein Arbeitgeber nicht lesen soll.`},
   unterschrift: {titel: "Unterschrift im Monatsnachweis", weg: "{weg_monatsnachweis}", text: `Ab Werk stehen am Ende des Nachweises zwei Spalten: links „Ort, Datum“, rechts „Unterschrift“ mit deinem Namen in Großbuchstaben. Mit dem Schalter „Zweite Unterschrift“ kommt eine dritte Spalte für „Vorgesetzter/Vorgesetzte“ dazu. Der Ort ist ab Werk leer, das Datum steht ab Werk auf „leer (von Hand)“.`},
   export: {titel: "Export und Teilen", weg: "{weg_export}", text: `Hier erstellst du Dateien und gibst sie weiter. Mit „Teilen statt Herunterladen“ öffnet sich das Teilen-Menü deines Geräts für Mail, Nachrichten oder andere Apps; am Handy als App vom Home-Bildschirm immer.[[sicherung]] Die ganze Datenbank lädst du unter <b>{weg_sicherung}</b> mit „Sicherung herunterladen“.[[/]]`},
-  exporte: {titel: "Welche Formate gibt es?", weg: "{weg_export}", text: `Es gibt {export_formate}. [[ex_pdf]]PDF eignet sich zum Lesen und Drucken. [[/]][[ex_office]]{office_formate} öffnest du im Office-Programm. [[/]][[ex_daten]]JSON, XML und CSV sind für andere Programme.[[/]]`},
+  exporte: {titel: "Welche Formate gibt es?", weg: "{weg_export}", text: `Es gibt {export_formate}. [[ex_pdf]]PDF eignet sich zum Lesen und Drucken. [[/]][[ex_office]]{office_formate} öffnest du im Office-Programm. [[/]][[ex_daten]]CSV ist für andere Programme.[[/]]`},
   sicherung: {titel: "Wie sichere ich meine Daten?", weg: "{weg_sicherung}", text: `[[am_server]]Der Server sichert jede Nacht um 03:10 Uhr in seinen Datenordner, holt eine ausgefallene Sicherung beim Start nach[[sonst]][[im_browser]]Die Web-App legt jeden Tag beim ersten Start eine Sicherung im Speicher des Browsers an[[sonst]]Die App legt jeden Tag beim ersten Start eine Sicherung im Datenordner an[[/]][[/]] und behält die letzten sieben; „Sicherung herunterladen“ speichert die ganze Datenbank, „Wiederherstellen“ spielt sie wieder ein. [[zutun]][[sync]]Ohne Synchronisierung erinnert[[sonst]]Bei dir erinnert[[/]] „Zu tun“ nach {sicherung_tage} Tagen ohne Sicherung.[[sonst]]Die Karte „Zu tun“ ist bei dir aus, die App erinnert dich nicht.[[/]] Vor dem Wiederherstellen sichert die App den alten Stand.`},
   handy_sicherung: {titel: "Verschlüsselte Sicherung", weg: "{weg_sicherung}", text: `[[im_browser]]Die Web-App erstellt mit „Sicherung erstellen“ eine <b>verschlüsselte</b> Kopie deiner Daten (AES-256), mit einem Passwort, das du unter „Passwort der Sicherung“ festlegst. Mit „Neueste Sicherung als Datei speichern“ legst du sie außerhalb der App ab, etwa in iCloud Drive.[[sonst]]Die Android-App legt eine <b>verschlüsselte</b> Kopie deiner Daten (AES-256) in deinen Cloud-Speicher, mit einem Passwort, das du festlegst. Du wählst, wie oft gesichert wird und wie viele Sicherungen bleiben.[[/]] <b>Ohne das Passwort ist die Sicherung nicht lesbar</b>, niemand kann es zurücksetzen.`},
   daten_pruefen: {titel: "Was macht „Daten prüfen“?", weg: "{weg_sicherung}", text: `<b>Daten prüfen</b> sucht Fehler in deinen Einträgen und ändert nichts: Gehen vor Kommen, doppelt belegte Tage, Arbeit an Feiertagen oder mehr Urlaub als Anspruch. Jeder Fund ist ein Link zum Tag. Solche Einträge kommen meist über die Synchronisierung, einen Import oder eine alte Sicherung.`},
@@ -5562,7 +5997,7 @@ const HILFE_TEXTE = {
   anmeldedienst: {titel: "Synchronisieren mit einem Server mit Anmeldung", weg: "{weg_sync}", text: `Verlangt dein eigener Server (Docker) eine Anmeldung, melden sich die Windows- und die Android-App dort einmal mit Benutzername und Passwort als Gerät an. Das Passwort speichert die App nicht, sie behält nur einen Schlüssel für dieses Gerät. <b>iPhone und iPad</b> öffnen in Safari die Adresse des Servers mit <b>/mobil/</b> am Ende.`},
   sync_aus: {titel: "Synchronisieren abschalten und Geräte zählen", weg: "{weg_sync}", text: `Die Seite Synchronisierung zeigt in der Zeile „Geräte in der Synchronisierung“, wie viele Geräte gerade mitmachen. Unter <b>{weg_einstellungen_module}</b> schaltest du „Synchronisieren“ nur für dieses Gerät ab; es meldet sich mit einer letzten Synchronisierung ab. Ist ein Gerät allein übrig, schaltet es die Synchronisierung selbst ab.`},
   geraet_entfernen: {titel: "Altes Gerät aus der Synchronisierung entfernen", weg: "{weg_sync} → Andere Geräte", text: `Eine neu installierte App oder ein geleerter Browser-Speicher ist ein neues Gerät, die Sync-Datei des alten bleibt liegen. Mit <b>Aus der Synchronisierung entfernen</b> löschst du sie; deine Einträge bleiben auf allen Geräten. Hat ein Gerät seit über 30 Tagen nichts geschrieben, schlägt die App das selbst vor.`},
-  aussehen: {titel: "Aussehen und Handy", weg: "{weg_einstellungen_aussehen}", text: `Du wählst Design (Automatisch, Web, Handy), Farbe, Stil (Glas, Flächig, Kompakt, Klar, Kräftig, Terminal), Akzentfarbe und Zeitformat; ab Werk startet die App dunkel. Design, Farbe, Stil, Glaseffekt und Akzentfarbe gelten nur auf diesem Gerät, das Zeitformat auf allen; gedruckt wird immer schlicht und hell. Im Browser legst du die Seite über „Zum Home-Bildschirm“ als App ab.[[am_rechner]] Am Windows-Rechner öffnet die App ihr eigenes Fenster, nur wenn das nicht geht einen Browser, den du hier unter „Browser für das Fenster der App“ wählst.[[/]]`},
+  aussehen: {titel: "Aussehen und Handy", weg: "{weg_einstellungen_aussehen}", text: `Die Darstellung folgt der Fensterbreite (schmal mit Tableiste unten, breit mit Seitenleiste), du wählst Farbe (Hell, Dunkel, Automatisch), Akzentfarbe (Blau, Grün, Orange, Rot, Violett, Graphit) und Zeitformat; ab Werk startet die App dunkel in Blau. Farbe und Akzentfarbe gelten nur auf diesem Gerät, das Zeitformat auf allen; gedruckt wird immer schlicht und hell. Im Browser legst du die Seite über „Zum Home-Bildschirm“ als App ab.[[am_rechner]] Am Windows-Rechner öffnet die App ihr eigenes Fenster, nur wenn das nicht geht einen Browser, den du hier unter „Browser für das Fenster der App“ wählst.[[/]]`},
   zeitformat: {titel: "Stunden als 07:30 oder 7,50?", weg: "{weg_einstellungen_aussehen}", text: `Stunden erscheinen als „07:30“ (Stunden und Minuten) oder „7,50“ (mit Komma), eingestellt ist {zeitformat}. Das gilt für alle Anzeigen und Exporte und auf allen deinen Geräten; gerechnet wird immer in Minuten. Beim Eintippen nimmt die App beides an.`},
   abschnitte: {titel: "Teilzeit, Elternzeit und andere Arbeitszeiten", weg: "{weg_einstellungen_arbeitszeit}", text: `Ohne Abschnitt gilt deine Standard-Arbeitszeit ({wochenstunden} Stunden, {arbeitstage}). Mit „Neuer Abschnitt ab …“ legst du einen Zeitraum mit eigenen Wochenstunden an, etwa Teilzeit, Elternzeit oder Altersteilzeit. Bei Teilzeit verteilst du die Stunden gleichmäßig oder trägst Stunden je Tag ein, höchstens 10 je Tag.`},
   gueltigkeit: {titel: "Ab wann gelten geänderte Regeln?", weg: "{weg_einstellungen_arbeitszeit}", text: `Geänderte Regeln gelten ab Werk <b>ab heute</b>: Vergangene Tage und das Gleitzeit-Konto bleiben, wie sie sind. Du kannst stattdessen ein Datum wählen oder rückwirkend für alle Zeiträume ändern. Die Liste „Gültigkeit der Regeln“ zeigt, was ab wann gilt. Ab 1.11. wählst du oben auf der Seite auch das Folgejahr; Dienstverhältnis, Kind krank, Feiertage und Übernahme gelten dann ab 1.1. dieses Jahres.`},
@@ -5572,7 +6007,7 @@ const HILFE_TEXTE = {
   zuruecksetzen: {titel: "Alles zurücksetzen (Werkseinstellungen)", weg: "{weg_einstellungen_module} → Werkseinstellungen", text: `„Alles zurücksetzen“ löscht auf diesem Gerät alle Einträge und Einstellungen, auch Passwort und Synchronisierung; danach gelten wieder die Voreinstellung und alle Module. Den Stand davor sichert die App, du lädst ihn unter <b>{weg_sicherung}</b> bei „Wiederherstellen“ herunter. Die anderen Geräte behalten ihre Einträge. In der Demo und über die freigegebene Oberfläche gibt es die Funktion nicht.`},
   personen: {titel: "Mehrere Personen auf dem Server", weg: "{weg_einstellungen_geraete}", text: `Auf einem Server mit Anmeldung hat jede Person ihren eigenen Datenordner, niemand sieht die Daten der anderen. Du meldest dich mit Namen und Passwort an; „Neu anlegen“ legt einen Zugang an, „Abmelden“ steht im Menü (in einem schmalen Fenster unter 700 px nur als Symbol oben). Die Rückfrage vor dem Abmelden schaltest du mit „Nicht mehr fragen“ ab. Namen ändern und „Meinen Zugang löschen“ findest du in den Einstellungen.`},
   admin: {titel: "Personen verwalten (nur Admins)", weg: "{weg_einstellungen_geraete} → Personen verwalten", text: `Admins sperren Personen, setzen ein Passwort zurück, geben oder nehmen das Admin-Recht und löschen Zugänge. Gelöschte Personen kommen in den Papierkorb des Servers und lassen sich wiederherstellen. Du siehst nie ein Passwort, und es bleibt immer mindestens ein Admin.`},
-  datenschutz: {titel: "Wann spricht die App mit anderen Geräten oder dem Internet?", weg: "", text: `<p>Die App sendet keine Daten an Dritte und misst nichts. Sie lädt nichts von fremden Adressen. Es gibt genau diese Ausnahmen:</p><ul><li><b>Synchronisierung über GitHub</b>, nur wenn du sie einrichtest: Die App spricht nur mit <b>api.github.com</b> und deinem eigenen Repo. Dorthin gehen nur verschlüsselte Sync-Dateien. GitHub sieht deine Zeiten nicht, wohl aber, wann ein Gerät synchronisiert. Das Token bleibt auf deinem Gerät.</li><li><b>Synchronisierung mit deinem eigenen Server</b> (Windows- und Android-App), nur mit der Adresse, die du einträgst. Bei einem Server mit Anmeldung holt die App mit Benutzername und Passwort einmal einen Schlüssel für dieses Gerät. Das Passwort speichert sie nicht.</li><li><b>Ein Gerät als Speicherort</b>, nur wenn du es einschaltest: Andere Geräte im selben Netz erreichen dann auf Anschluss 8793 nur die verschlüsselten Sync-Dateien, nicht die App.</li><li><b>Windows-App am iPhone oder iPad bedienen</b>, nur wenn du es einschaltest: Die Oberfläche ist dann im eigenen Netz auf Anschluss 8794 erreichbar, nur mit dem Zugang aus dem QR-Code. „App beenden“ und das Einrichten der Synchronisierung gehen dort nicht.</li><li><b>Update-Hinweis</b> (Windows- und Android-App): Alle 30 Tage fragt die App bei GitHub nach der Nummer der neuesten Version (nur <b>api.github.com</b>, ohne Anmeldung, ohne Token). Dabei sieht GitHub die IP-Adresse deines Geräts. Die App lädt nichts herunter, installiert nichts und sendet keine Daten von dir. {update_stand} {update_aus}</li><li><b>Web-App ohne Server:</b> Sie spricht nur mit dem Server, der sie ausliefert. Ihre Programmdateien kommen beim ersten Start und bei einer neuen Version von dieser Adresse. Der Betreiber dieser Adresse sieht dabei deine IP-Adresse, aber keine Eingaben.</li></ul><p><b>Eingebaute Bibliotheken</b></p><ul><li><b>ZXing</b> (Android-App) liest den QR-Code beim Koppeln. Die Bibliothek baut keine Verbindung auf.</li><li><b>pycryptodome</b> (Web-App ohne Server) verschlüsselt Sicherung und Synchronisierung, weil ihr Python im Browser keine eigene mitbringt. Die Bibliothek rechnet nur und baut keine Verbindung auf. Die Windows-, Android- und Server-Fassung nutzen dafür OpenSSL.</li></ul><p><b>Android</b></p><ul><li>Die Android-App legt ihre verschlüsselte Sicherung in den Cloud-Ordner deines eigenen Kontos. Die Verbindung dorthin macht dein Gerät, nicht die App.</li><li>Außerdem nimmt die Gerätesicherung von Google die Datenbank mit. Die App verschlüsselt sie dafür nicht eigens. Ab Android 9 geschieht das nur, wenn das Gerät die Sicherung verschlüsselt (mit gesetzter Bildschirmsperre). Android 7 und 8 sichern ohne diese Bedingung. Passwort-Schlüssel und GitHub-Token sind davon ausgenommen. Wer das nicht möchte, schaltet in den Android-Einstellungen die Google-Sicherung für Apps aus.</li></ul><p><b>Eigener Server</b></p><ul><li>Die App hat ohne Anmeldedienst keine Anmeldung. Betreibe einen Server nur in einem privaten Netz oder hinter einem geschützten Zugang.</li></ul>{datenschutz_seite}${HILFE_URHEBER}`}
+  datenschutz: {titel: "Wann spricht die App mit anderen Geräten oder dem Internet?", weg: "", text: `<p>Die App sendet keine Daten an Dritte und misst nichts. Sie lädt nichts von fremden Adressen. Es gibt genau diese Ausnahmen:</p><ul><li><b>Synchronisierung über GitHub</b>, nur wenn du sie einrichtest: Die App spricht nur mit <b>api.github.com</b> und deinem eigenen Repo. Dorthin gehen nur verschlüsselte Sync-Dateien. GitHub sieht deine Zeiten nicht, wohl aber, wann ein Gerät synchronisiert. Das Token bleibt auf deinem Gerät.</li><li><b>Synchronisierung mit deinem eigenen Server</b> (Windows- und Android-App), nur mit der Adresse, die du einträgst. Bei einem Server mit Anmeldung holt die App mit Benutzername und Passwort einmal einen Schlüssel für dieses Gerät. Das Passwort speichert sie nicht.</li><li><b>Ein Gerät als Speicherort</b>, nur wenn du es einschaltest: Andere Geräte im selben Netz erreichen dann auf Anschluss 8793 nur die verschlüsselten Sync-Dateien, nicht die App.</li><li><b>Windows-App am iPhone oder iPad bedienen</b>, nur wenn du es einschaltest: Die Oberfläche ist dann im eigenen Netz auf Anschluss 8794 erreichbar, nur mit dem Zugang aus dem QR-Code. „App beenden“ und das Einrichten der Synchronisierung gehen dort nicht.</li><li><b>Update-Hinweis</b> (Windows- und Android-App): Alle 30 Tage fragt die App bei GitHub nach der Nummer der neuesten Version (nur <b>api.github.com</b>, ohne Anmeldung, ohne Token). Dabei sieht GitHub die IP-Adresse deines Geräts. Die App lädt nichts herunter, installiert nichts und sendet keine Daten von dir. {update_stand} {update_aus}</li><li><b>Web-App ohne Server:</b> Sie spricht nur mit dem Server, der sie ausliefert. Ihre Programmdateien kommen beim ersten Start und bei einer neuen Version von dieser Adresse. Der Betreiber dieser Adresse sieht dabei deine IP-Adresse, aber keine Eingaben.</li></ul><p><b>Eingebaute Bibliotheken</b></p><ul><li><b>ZXing</b> (Android-App) liest den QR-Code beim Koppeln. Die Bibliothek baut keine Verbindung auf.</li><li><b>pycryptodome</b> (Web-App ohne Server) verschlüsselt Sicherung und Synchronisierung, weil ihr Python im Browser keine eigene mitbringt. Die Bibliothek rechnet nur und baut keine Verbindung auf. Die Windows-, Android- und Server-Fassung nutzen dafür OpenSSL.</li></ul><p><b>Android</b></p><ul><li>Die Android-App legt ihre verschlüsselte Sicherung in den Cloud-Ordner deines eigenen Kontos. Die Verbindung dorthin macht dein Gerät, nicht die App.</li><li>Außerdem nimmt die Gerätesicherung von Google die Datenbank mit. Die App verschlüsselt sie dafür nicht eigens. Ab Android 9 geschieht das nur, wenn das Gerät die Sicherung verschlüsselt (mit gesetzter Bildschirmsperre). Android 7 und 8 sichern ohne diese Bedingung. Passwort-Schlüssel und GitHub-Token sind davon ausgenommen. Wer das nicht möchte, schaltet in den Android-Einstellungen die Google-Sicherung für Apps aus.</li></ul><p><b>Eigener Server</b></p><ul><li>Die App hat ohne Anmeldedienst keine Anmeldung. Betreibe einen Server nur in einem privaten Netz oder hinter einem geschützten Zugang.</li></ul><p><b>Papierkorb</b></p><ul><li>Geleerte Tage und gelöschte Einträge bleiben 30 Tage im Papierkorb, nur auf diesem Gerät. So lange stehen sie auch in Sicherungsdateien aus dieser Zeit. Beim Einspielen einer Sicherung kommt der Papierkorb nicht mit.</li></ul>{datenschutz_seite}${HILFE_URHEBER}`}
 };
 // Wann ein Abschnitt erscheint (fehlt der Schlüssel: immer); gleich für alle Fassungen.
 const HILFE_GILT = {
@@ -5596,6 +6031,7 @@ const HILFE_GILT = {
   krank: () => modulAn("krank"),
   sync: () => modulAn("abgleich"),
   anmeldedienst: () => modulAn("abgleich"),
+  quote_ampel: () => mitGrenze(),
   spielraum: () => mitGrenze(),
   familientage: () => modulAn("familientage"),
   angespart: () => modulAn("angespart"),
@@ -5651,14 +6087,13 @@ const hilfeStartTage = () => aufzaehlung(hilfeNurAn([["Urlaub", modulAn("urlaub"
 // Tage der Homeoffice-Übersicht (Abschnitt „uebersicht“): Urlaub, Gleittage und Kranktage nur mit ihrem Modul.
 const hilfeUebersichtTage = () => aufzaehlung(hilfeNurAn([["Urlaubstage", modulAn("urlaub")], ["Gleittage", modulAn("gleittage")], ["Kranktage", modulAn("krank")],
   ["reinen HO-Tage", true], ["Büro-Tage", true], ["Elternzeit-Tage", true]]));
-// Formate des Exports je Modul (wie ENDUNG_MODUL in export.js); Excel gibt es nur bei der Homeoffice-Übersicht (FORMATE_UEBERSICHT, Karte wie in seiteExport).
-const HILFE_EXPORT_FORMATE = [["ex_pdf", ["PDF"]], ["ex_office", ["Word", "ODT", "ODS", "Excel"]], ["ex_text", ["Markdown", "Text"]], ["ex_daten", ["JSON", "XML", "CSV"]]];
+// Formate des Exports je Modul (wie ENDUNG_MODUL in formate.js); Word gibt es nur beim Monatsnachweis (monatsnachweis.js).
+const HILFE_WORD = "Word (nur Monatsnachweis)";
+const HILFE_EXPORT_FORMATE = [["ex_pdf", ["PDF"]], ["ex_office", ["Excel", HILFE_WORD]], ["ex_daten", ["CSV"]]];
 const HILFE_KEINE_FORMATE = "keine Formate, sie sind alle abgeschaltet";
 const HILFE_KALENDER = "einen Kalender (.ics) mit deinen Abwesenheiten";   // export.ICS_ARTEN: alle ganztägigen Arten
-// Gibt es Excel? Nur mit der Karte Homeoffice-Übersicht (Modul und Homeoffice).
-const hilfeMitExcel = () => modulAn("nachweis") && hoModus() !== "kein";
-// Namen der Formate eines Moduls m (Excel nur mit der Homeoffice-Übersicht).
-const hilfeFormate = m => HILFE_EXPORT_FORMATE.find(([k]) => k === m)[1].filter(n => n !== "Excel" || hilfeMitExcel());
+// Namen der Formate eines Moduls m (Word nur mit eingeschaltetem Monatsnachweis).
+const hilfeFormate = m => HILFE_EXPORT_FORMATE.find(([k]) => k === m)[1].filter(n => n !== HILFE_WORD || modulAn("monatsnachweis"));
 // Formate und Kalender für den Abschnitt „exporte“ als Text, nur mit eingeschaltetem Modul; ohne Format HILFE_KEINE_FORMATE.
 function hilfeExportFormate() {
   const formate = HILFE_EXPORT_FORMATE.filter(([m]) => modulAn(m)).flatMap(([m]) => hilfeFormate(m));
@@ -5959,7 +6394,7 @@ document.addEventListener("click", async ev => {
     catch (e) { if (e.name === "LadeFehler" || (alsApp() && e.name !== "AbortError")) toastFehler(e.message); else if (e.name !== "AbortError") location.href = a.getAttribute("href"); }
     return;
   }
-  if (!a || /[?&]ansehen=1/.test(a.getAttribute("href")) || !/(\.(pdf|docx|odt|ods|xlsx|csv|json|xml|md|txt|ics|db|zsich)|api\/sicherung|api\/abgleich\/datei)$/i.test(ziel)) return;   // „ansehen“: Kalender öffnen statt laden (wie bisher)
+  if (!a || /[?&]ansehen=1/.test(a.getAttribute("href")) || !/(\.(pdf|docx|xlsx|csv|json|ics|db|zsich)|api\/sicherung|api\/abgleich\/datei)$/i.test(ziel)) return;   // „ansehen“: Kalender öffnen statt laden (wie bisher)
   if (alsApp() && !teilenMoeglich()) {                               // App-Ansicht ohne Teilen-Menü: nicht in die Datei hineinlaufen
     ev.preventDefault();
     toast("Herunterladen geht in der App-Ansicht nicht. Bitte die Seite in Safari öffnen.");
@@ -5975,15 +6410,17 @@ document.addEventListener("click", async ev => {
   }
 });
 // ---- Seitenwechsel
-const SEITEN = {start: async () => (await Promise.all([browserWahlHtml(true), seiteStart()])).join(""), tag: seiteTag, monat: seiteMonat, woche: seiteWoche, horest: seiteHoRest, jahr: seiteJahr, urlaub: seiteUrlaub, krank: seiteKrank, steuer: seiteSteuer, export: seiteExport, sicherung: seiteSicherung, sync: seiteSync, einstellungen: seiteEinstellungen, hilfe: seiteHilfe, sondertage: seiteSondertage, monatsnachweis: seiteMonatsnachweis};
+const SEITEN = {start: async () => (await Promise.all([browserWahlHtml(true), seiteStart()])).join(""), tag: seiteTag, monat: seiteMonat, woche: seiteWoche, horest: seiteHoRest, jahr: seiteJahr, urlaub: seiteUrlaub, krank: seiteKrank, steuer: seiteSteuer, export: seiteExport, sicherung: seiteSicherung, sync: seiteSync, einstellungen: seiteEinstellungen, hilfe: seiteHilfe, sondertage: seiteSondertage, monatsnachweis: seiteMonatsnachweis, suche: seiteSuche};
 // Handy-Design: Kopfleiste (Zurück, Jahr, Menü) bleibt oben stehen (CSS sticky); der Rahmen wird beim Scrollen hinterlegt
 window.addEventListener("scroll", () => document.body.classList.toggle("gescrollt", window.scrollY > 6), {passive: true});
+neuErsterStart(speicher.l("ho_appv", ""));                  // vor dem Merken der Version: ein neues Gerät sieht „Neu in dieser Version“ nie (darstellung.js)
 // Neue Version: gemerkte Seiten sofort verwerfen (vor dem ersten Zeichnen), sie können Markup der alten Version enthalten
 { const v = document.currentScript ? new URL(document.currentScript.src).searchParams.get("v") : "";
   if (v && speicher.l("ho_appv", "") !== v) { seitenCacheLeeren(); speicher.s("ho_appv", v); } }
 fetch("api/version").then(r => r.json()).then(d => { if (speicher.l("ho_appv", "") !== d.version) { seitenCacheLeeren(); speicher.s("ho_appv", d.version); } APP_VERSION = d.version; const e = $("#app-version"); if (e) e.textContent = d.version; if (d.plattform === "desktop" && !d.fern) beendenKnopf();
   PLATTFORM = d.plattform || "server"; FERN = !!d.fern; if (MIT_SYNC.includes(PLATTFORM)) syncStart(); voreinstellungUebernehmen();
   nachErsterSeite(() => { netzAutomatik(); githubAutomatik(); versionBeobachten(); });   // erst zeichnen, dann ins Netz (Befund „Start hängt“)
+  nachErsterSeite(neuAnbieten);                         // „Neu in dieser Version“ erst, wenn die Version bekannt und die Seite gezeichnet ist
   // Dienst-Skript (sw.js): Die Oberfläche bleibt im Gerät, die App startet vom Home-Bildschirm auch ohne Verbindung. Nur auf dem Server.
   if (PLATTFORM === "server" && "serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   if (PLATTFORM === "browser" && seitenName() === "start" && sichernFaellig()) zeigen();
@@ -6008,6 +6445,8 @@ $("#j-vor").onclick = () => setJahr(jahr + 1);
 $("#j-heute").onclick = () => setJahr(heute.getFullYear());
 // Symbolleiste oben, auf jeder Seite: „Heute im Monat“ öffnet den Monat beim heutigen Tag (Wunsch vom 17.11.2026)
 $("#zu-heute").innerHTML = sym("heute");
+$("#suche-knopf").innerHTML = sym("suche");
+$("#suche-knopf").onclick = () => { location.hash = "#/suche"; };   // Lupe: Tage suchen (Auftrag A6)
 $("#farb-knopf").onclick = farbeUmschalten; darstellung();
 $("#sync-symbol").onclick = syncSymbolTippen;
 $("#zu-heute").onclick = () => { zeitDatum = zeitHeuteIso(); jahr = heute.getFullYear(); monat = heute.getMonth() + 1; window.scrollHeute = true; const ziel = `#/monat/${jahr}/${monat}`; if (location.hash === ziel) zeigen(); else location.hash = ziel; };
@@ -6024,6 +6463,7 @@ setInterval(() => {
   const s = uhr(stempelSekunden());
   [$("#b-uhr"), $("#s-uhr")].forEach(e => { if (e) e.textContent = s; });
 }, 1000);
+setInterval(quoteAmpelLaufend, QUOTE_AMPEL_TAKT);                    // Quote-Ampel mit der laufenden Uhr (bausteine/quote_ampel.js)
 if (seitenName() !== "start") stempelLaden().then(gehenVergessenPruefen);     // die Übersicht fragt den Stand selbst ab
 // Zurück in der App (alle Fassungen): Stand der Uhr neu holen und, wenn „Gehen“ vergessen scheint, noch einmal fragen
 document.addEventListener("visibilitychange", () => { if (!document.hidden && modulAn("stempel")) stempelZurueck(); });
@@ -6052,13 +6492,15 @@ document.addEventListener("keydown", e => {
   if (rasterTaste(e)) return;                                                        // Pfeile im Monats-Raster gehen von Tag zu Tag
   if (zeitTaste(e)) return;
   if ((e.key === "t" || e.key === "T") && seitenName() === "horest") zuHeute();
+  // Am Rechner von jeder Seite: heute eintragen (Strg+N bleibt beim Browser); nicht in der Einrichtung, ungesicherte Eingaben in der Spalte erst nach Rückfrage
+  if ((e.key === "n" || e.key === "N") && !e.repeat && !e.altKey && !e.ctrlKey && !e.metaKey && !$("#einrichtung")) zeitVerwerfenOk().then(ok => { if (ok) heuteEintragen(); });
 });
 
 
 api("GET", "/konfig").then(k => { KONFIG = k.werte; }).catch(() => {}).finally(async () => { try { await zeigen(); } finally { ersteSeiteGezeichnet(); } if (seitenName() !== "start") zutunLaden().then(zutunZahl); });   // Zahl am Symbol; die Übersicht fragt selbst
 
-const AKTIONEN = {profilWaehlen, uebersichtHoch, uebersichtRunter, uebersichtStandard, zutunSpaeter, zutunAus, syncGithub, syncGithubTrennen, syncServerAbmelden, geraetEntfernen, monatOeffnen, monatKalender, exportHeute, neuLaden, appBeenden, browserWaehlen, syncAlle, syncDateiWaehlen, syncJetzt, profilAnwenden, profilSpeichern, profilLoeschen, profilDateiWaehlen, personAbmelden, personUmbenennen, benutzerAendern, selbstLoeschen, adminLoeschen, adminPasswort, adminSperren, adminRolle, adminNeuAnlegen, adminPapierkorbLeeren, adminPapierkorbZurueck, syncKoppeln, syncKoppelnAnnehmen, syncScannen, syncOrdner, syncPasswort, syncServer, syncWahl, abschnittBearbeiten, akzentStandard, anspruchSpeichern, bueroSetzen, dateiWaehlen, demoEnde, demoStart, familientageSchalten, freizeitSetzen, gleitzeitSetzen, handyJetzt, handyPasswort, handyWieder, heuteEintragen, kontoLoeschen, kontoSpeichern, monatAnsicht, monatBlaettern, rueckgaengig, planAlle, planArtWaehlen, planEintragen, planLoeschen, planZuruecksetzen, regelnSpeichern, regelnStandard, regelnVersionWeg, schritt, stempelBlatt, beginnKorrigieren, uebertragAuto, uebertragSpeichern, urlaubAnsicht, werkseinstellungen, wiederherstellen, zeitBlaettern, zeitHeute, zeitKalender, tagBearbeiten, zuHeute, handyDateiWaehlen, handyWiederDatei, zeigen, nachweisHeute, datenPruefen, appPruefen, jahreswechselAnsparen, jahreswechselErledigt, einrichtungWeiter, einrichtungZurueck, einrichtungFertig, einrichtungUeberspringen, rundgang, rundgangStart, blattZu, syncEinrichten, syncWegWaehlen, syncWeiter, syncZurueck, syncAbbrechen, syncFertig, syncAlleWege, lizenzListe, lizenzText, syncGeraetEntfernen, brueckeEintragen, hilfeZuSeite, hilfeZurueck};
-const WECHSEL = {abmeldeFrageSchalten, uebersichtZeigen, modulSchalten, profilSchalten, profilImport, familientageSchalten, hoModusWahl, dienstEigenWahl, syncAuto, syncEinlesen, syncFreigabe, syncOberflaeche, dateiNameZeigen, handyAuto, handyBehalten, handyDateiName, handyRhythmus, exportMonatWaehlen, exportJahrWaehlen, planKalenderLink, teilenSchalten, nachweisMonatWaehlen, nachweisZeitenSchalten, nachweisUnterschrift, zeitKalenderDatum, monatDatum};
+const AKTIONEN = {profilWaehlen, uebersichtHoch, uebersichtRunter, uebersichtStandard, zutunSpaeter, zutunAus, zutunAlleTage, syncGithub, syncGithubTrennen, syncServerAbmelden, geraetEntfernen, monatOeffnen, exportHeute, neuLaden, appBeenden, browserWaehlen, syncAlle, syncDateiWaehlen, syncJetzt, profilAnwenden, profilSpeichern, profilLoeschen, profilDateiWaehlen, personAbmelden, personUmbenennen, benutzerAendern, selbstLoeschen, adminLoeschen, adminPasswort, adminSperren, adminRolle, adminNeuAnlegen, adminPapierkorbLeeren, adminPapierkorbZurueck, syncKoppeln, syncKoppelnAnnehmen, syncScannen, syncOrdner, syncPasswort, syncServer, syncWahl, abschnittBearbeiten, akzentStandard, anspruchSpeichern, bueroSetzen, dateiWaehlen, demoEnde, demoStart, familientageSchalten, freizeitSetzen, gleitzeitSetzen, handyJetzt, handyPasswort, handyWieder, heuteEintragen, kontoLoeschen, kontoSpeichern, monatAnsicht, monatBlaettern, rueckgaengig, planAlle, planArtWaehlen, planEintragen, planLoeschen, planZuruecksetzen, regelnSpeichern, regelnStandard, regelnVersionWeg, schritt, stempelBlatt, beginnKorrigieren, uebertragAuto, uebertragSpeichern, urlaubAnsicht, werkseinstellungen, wiederherstellen, zeitBlaettern, zeitHeute, zeitKalender, tagBearbeiten, zuHeute, handyDateiWaehlen, handyWiederDatei, zeigen, nachweisHeute, datenPruefen, appPruefen, jahreswechselAnsparen, jahreswechselErledigt, einrichtungWeiter, einrichtungZurueck, einrichtungFertig, einrichtungUeberspringen, rundgang, rundgangStart, neuRundgang, neuAnsehen, neuNichtMehr, blattZu, syncEinrichten, syncWegWaehlen, syncWeiter, syncZurueck, syncAbbrechen, syncFertig, syncAlleWege, lizenzListe, lizenzText, syncGeraetEntfernen, brueckeEintragen, hilfeZuSeite, hilfeZurueck, sucheStarten};
+const WECHSEL = {abmeldeFrageSchalten, mitternachtKappHinweis, neuSchalten, uebersichtZeigen, modulSchalten, profilSchalten, profilImport, familientageSchalten, hoModusWahl, dienstEigenWahl, syncAuto, syncEinlesen, syncFreigabe, syncOberflaeche, dateiNameZeigen, handyAuto, handyBehalten, handyDateiName, handyRhythmus, exportMonatWaehlen, exportJahrWaehlen, planKalenderLink, teilenSchalten, nachweisMonatWaehlen, nachweisZeitenSchalten, nachweisUnterschrift, zeitKalenderDatum, monatDatum};
 document.addEventListener("click", ev => {
   const e = ev.target.closest && ev.target.closest("[data-klick]");
   if (!e || e.disabled || beschaeftigt(e)) return;
