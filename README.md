@@ -15,7 +15,7 @@ Kleine, private Zeiterfassung für Büro und Homeoffice. Ohne Benutzerkonto, ohn
 - Teilzeit, Elternzeit, Altersteilzeit und andere Arbeitszeiten als Abschnitte
 - Homeoffice-Übersicht und Export als PDF, Excel und CSV, dazu Kalender (.ics); Word beim Monatsnachweis
 - Feiertage aller 16 Bundesländer
-- Synchronisierung zwischen mehreren eigenen Geräten, verschlüsselt (wenn gewünscht)
+- Synchronisieren zwischen mehreren eigenen Geräten, verschlüsselt (wenn gewünscht)
 
 > **Anleitung:** Alles Schritt für Schritt steht im **[Wiki](https://github.com/davidsaluda/zeiterfassung-app/wiki)**: Installieren, Einrichten, Sichern, Synchronisieren, Update, Fragen und Fehler. Dort zuerst [„Welcher Weg passt zu mir?“](https://github.com/davidsaluda/zeiterfassung-app/wiki/Home#welcher-weg-passt-zu-mir) lesen.
 

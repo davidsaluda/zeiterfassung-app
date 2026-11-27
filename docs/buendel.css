@@ -3,11 +3,13 @@
 /* Zeiterfassung – zwei Designs: Web (Seitenleiste, breit) und Handy (Tableiste unten). Umschaltbar unter „Darstellung“. */
 /* ===== Grundlage „Glas“ (design.md 2): ein Farbsatz an :root für beide Designs; hell gilt am Bildschirm und immer beim Drucken,
    die Dunkel-Sätze stehen nur in @media screen (3.16). darstellung() setzt die Akzentwerte inline; die Werte hier gelten bis dahin (Blau). ===== */
-:root{color-scheme:light;
+:root{color-scheme:light;--probe-hebung:saturate(8) brightness(.9);
   --bg:#f2f3f7;--bg-oben:#f7f8fb;--bg-unten:#e8eaf0;
-  --bg-img:radial-gradient(70% 45% at 85% -5%,color-mix(in srgb,var(--acc) var(--schimmer),transparent),transparent 70%),radial-gradient(60% 40% at 0% 100%,color-mix(in srgb,var(--acc) calc(var(--schimmer) * .6),transparent),transparent 70%),linear-gradient(180deg,var(--bg-oben),var(--bg-unten) 70%,var(--bg));   /* endet in --bg: unter dem ersten Bildschirm keine Kante */
+  --bg-verlauf:radial-gradient(70% 45% at 85% -5%,color-mix(in srgb,var(--acc) var(--schimmer),transparent),transparent 70%),radial-gradient(60% 40% at 0% 100%,color-mix(in srgb,var(--acc) calc(var(--schimmer) * .6),transparent),transparent 70%),linear-gradient(180deg,var(--bg-oben),var(--bg-unten) 70%,var(--bg));   /* endet in --bg: unter dem ersten Bildschirm keine Kante */
+  --bg-img:var(--bg-verlauf);   /* Hintergrund ab Werk; die anderen (Einstellungen › Aussehen) setzt data-hintergrund unten */
+  --acc-2:var(--acc);--aurora:16%;--aurora-2:0%;   /* Nachbarton und Anteile der Flecken von Aurora, bis darstellung() sie setzt (sonst wäre Aurora vor dem ersten Zeichnen ungültig) */
   --schimmer:14%;   /* Anteil des Akzents am Verlauf (unten 60 % davon); darstellung() setzt ihn je Farbe (schimmerAnteil), hier der Wert für Blau (dunkel 25 %, hell 14 %) */
-  --bg-schlimm:color-mix(in srgb,var(--bg-unten) calc(100% - var(--schimmer)),var(--acc));   /* ungünstigster Punkt des Verlaufs, nur für die Messung */
+  --bg-schlimm:color-mix(in srgb,var(--bg-unten) calc(100% - var(--schlimm-anteil,var(--schimmer))),var(--acc));   /* ungünstigster Punkt des Hintergrunds (Aurora setzt --schlimm-anteil), nur für die Messung */
   --card:rgba(255,255,255,.66);--card-fest:#fff;--pop:#fbfbfd;--frei:rgba(120,120,128,.12);
   --glas:blur(24px) saturate(180%);--glas-karte:var(--glas);--glas-blatt:blur(8px);--kopf-deckung:72%;
   --rand:rgba(255,255,255,.85);--rand-aussen:rgba(17,19,24,.08);--line:rgba(17,19,24,.10);--knopf-rand:rgba(60,60,67,.3);--feld-rand:rgba(60,60,67,.6);
@@ -30,11 +32,11 @@
   /* Fokus und Bewegung */
   --fokus-ring:2px solid var(--acc-ui);--fokus-abstand:2px;
   --dauer-1:120ms;--dauer-2:200ms;--dauer-3:320ms;--kurve:cubic-bezier(.2,.8,.2,1);--kurve-raus:cubic-bezier(.4,0,1,1)}
-@media screen{:root[data-theme=dark]{color-scheme:dark;
+@media screen{:root[data-theme=dark]{color-scheme:dark;--probe-hebung:brightness(2.6) saturate(1.3);
   --bg:#050608;--bg-oben:#0b0d14;--bg-unten:#050608;
   --schimmer:25%;
-  --bg-img:radial-gradient(80% 50% at 15% -10%,color-mix(in srgb,var(--acc) var(--schimmer),transparent),transparent 70%),radial-gradient(70% 45% at 100% 100%,color-mix(in srgb,var(--acc) calc(var(--schimmer) * .6),transparent),transparent 70%),linear-gradient(180deg,var(--bg-oben),var(--bg-unten) 60%);
-  --bg-schlimm:color-mix(in srgb,var(--bg-oben) calc(100% - var(--schimmer)),var(--acc));
+  --bg-verlauf:radial-gradient(80% 50% at 15% -10%,color-mix(in srgb,var(--acc) var(--schimmer),transparent),transparent 70%),radial-gradient(70% 45% at 100% 100%,color-mix(in srgb,var(--acc) calc(var(--schimmer) * .6),transparent),transparent 70%),linear-gradient(180deg,var(--bg-oben),var(--bg-unten) 60%);
+  --bg-schlimm:color-mix(in srgb,var(--bg-oben) calc(100% - var(--schlimm-anteil,var(--schimmer))),var(--acc));
   --card:rgba(255,255,255,.06);--card-fest:#15171d;--pop:#1b1e25;--frei:rgba(255,255,255,.06);
   --rand:rgba(255,255,255,.16);--rand-aussen:rgba(0,0,0,.4);--line:rgba(255,255,255,.10);--knopf-rand:rgba(255,255,255,.18);--feld-rand:rgba(255,255,255,.4);
   --glanz:inset 0 1px 0 rgba(255,255,255,.22);
@@ -46,11 +48,11 @@
   --gelbbg:color-mix(in srgb,#ffd60a 16%,transparent);
   --c-urlaub:#51cf66;--c-gleit:#9b7bff;--c-krank:#ff6b6b;--c-kd:#9aa1ac;--c-ez:#f06595;--c-frei:#38c7b4;--c-fam:#fcc419;
   --acc-fg:#91c6ff;--acc-ui:#4da2ff}}
-@media screen and (prefers-color-scheme:dark){:root:not([data-theme=light]):not([data-theme=dark]){color-scheme:dark;
+@media screen and (prefers-color-scheme:dark){:root:not([data-theme=light]):not([data-theme=dark]){color-scheme:dark;--probe-hebung:brightness(2.6) saturate(1.3);
   --bg:#050608;--bg-oben:#0b0d14;--bg-unten:#050608;
   --schimmer:25%;
-  --bg-img:radial-gradient(80% 50% at 15% -10%,color-mix(in srgb,var(--acc) var(--schimmer),transparent),transparent 70%),radial-gradient(70% 45% at 100% 100%,color-mix(in srgb,var(--acc) calc(var(--schimmer) * .6),transparent),transparent 70%),linear-gradient(180deg,var(--bg-oben),var(--bg-unten) 60%);
-  --bg-schlimm:color-mix(in srgb,var(--bg-oben) calc(100% - var(--schimmer)),var(--acc));
+  --bg-verlauf:radial-gradient(80% 50% at 15% -10%,color-mix(in srgb,var(--acc) var(--schimmer),transparent),transparent 70%),radial-gradient(70% 45% at 100% 100%,color-mix(in srgb,var(--acc) calc(var(--schimmer) * .6),transparent),transparent 70%),linear-gradient(180deg,var(--bg-oben),var(--bg-unten) 60%);
+  --bg-schlimm:color-mix(in srgb,var(--bg-oben) calc(100% - var(--schlimm-anteil,var(--schimmer))),var(--acc));
   --card:rgba(255,255,255,.06);--card-fest:#15171d;--pop:#1b1e25;--frei:rgba(255,255,255,.06);
   --rand:rgba(255,255,255,.16);--rand-aussen:rgba(0,0,0,.4);--line:rgba(255,255,255,.10);--knopf-rand:rgba(255,255,255,.18);--feld-rand:rgba(255,255,255,.4);
   --glanz:inset 0 1px 0 rgba(255,255,255,.22);
@@ -64,6 +66,16 @@
   --acc-fg:#91c6ff;--acc-ui:#4da2ff}}
 /* Milchglas mit Rückfall „ohne Durchscheinen“. !important, weil die Dunkel-Sätze höhere Spezifität haben (F-F0) */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:root{--card:var(--card-fest)!important;--kopf-deckung:100%!important}}
+/* Hintergründe zur Wahl (26.11.2026), je einer für Hell und Dunkel aus den Variablen des Modus. Uni bleibt in der Hülle des Verlaufs. Aurora hat zwei
+   kräftigere Flecken: Akzent links oben (--aurora), Nachbarton rechts (--acc-2 mit --aurora-2, darstellung.js). Jeder reicht keine halbe Breite weit, so
+   überlappen sie nie und die ungünstigste Stelle ist der Akzent-Fleck allein (--schlimm-anteil, akzentFlaeche). Höhe in vh, damit beide im ersten
+   Bildschirm liegen, auch auf langen Seiten; min() hält die Flecken in der Vorschau-Kachel (Radien kennen kein min()). */
+:root{
+  --bg-aurora:radial-gradient(68% 80vh at 0% min(18vh,30%),color-mix(in srgb,var(--acc) var(--aurora),transparent),transparent 70%),radial-gradient(68% 80vh at 100% min(55vh,60%),color-mix(in srgb,var(--acc-2) var(--aurora-2),transparent),transparent 70%),linear-gradient(180deg,var(--bg-oben),var(--bg-unten) 70%,var(--bg));
+  --bg-uni:radial-gradient(130% 100% at 50% 30%,var(--bg-oben) 35%,var(--bg-unten));
+}
+:root[data-hintergrund=aurora]{--bg-img:var(--bg-aurora);--schlimm-anteil:var(--aurora)}
+:root[data-hintergrund=uni]{--bg-img:var(--bg-uni)}
 :root[data-glas=aus]{--card:var(--card-fest)!important;--glas:none!important;--glas-karte:none!important;--glas-blatt:none!important;--kopf-deckung:100%!important}   /* jede Unschärfe aus: Karten, Leisten, Kopfleiste, Blatt */
 @media (prefers-reduced-transparency:reduce){:root{--card:var(--card-fest)!important;--glas:none!important;--glas-karte:none!important;--glas-blatt:none!important;--kopf-deckung:100%!important}}
 /* Maße je Design; die Farben gelten für beide Designs gleich (F-G2) */
@@ -296,11 +308,14 @@ body[data-design=handy] #blatt .inh::before{content:"";position:absolute;top:8px
 body[data-design=handy] #blatt h3{text-align:center;font-size:17px;font-weight:600;margin-bottom:6px}
 
 /* ===== Web-Design: ruhiger, größer, mehr Luft ===== */
-body[data-design=web]{--seite-b:264px;padding-left:var(--seite-b)}
+/* Breite der Seitenleiste (Auftrag 26.11.2026): alle sechs Schnell-Symbole (Hilfe, Wolke, Farbe, Heute, Lupe, Abmelden) zu 44 px Tippfläche mit gleichem
+   Abstand und dem Innenabstand der Leiste in einer Zeile, 311 px. „App beenden“ der Desktop-Fassung steht in der Navigation, nicht bei den Symbolen. */
+body[data-design=web]{--schnell-zahl:6;--schnell-knopf:44px;--schnell-abstand:3px;--leiste-innen:16px;
+  --seite-b:calc(var(--schnell-zahl) * var(--schnell-knopf) + (var(--schnell-zahl) - 1) * var(--schnell-abstand) + 2 * var(--leiste-innen));padding-left:var(--seite-b)}
 /* Grund und Rand der Seitenleiste malt die Hülle als Schatten links neben sich: Sie ist so hoch wie die Seite, die feste Leiste nur so hoch wie das Fenster
    (ganzseitige Bilder endeten sonst bei 900 px). Die Leiste bleibt durchsichtig, zwei halbdurchsichtige Flächen übereinander wären dunkler. */
 body[data-design=web] #huelle{display:flow-root;box-shadow:-1px 0 0 var(--rand),calc(-1 * var(--seite-b)) 0 0 var(--card)}   /* flow-root: der Rand der Fußzeile bleibt in der Hülle */
-body[data-design=web] #seite{width:var(--seite-b);padding:22px 16px;background:none;-webkit-backdrop-filter:var(--glas);backdrop-filter:var(--glas);box-shadow:var(--glanz)}
+body[data-design=web] #seite{width:var(--seite-b);padding:22px var(--leiste-innen);background:none;-webkit-backdrop-filter:var(--glas);backdrop-filter:var(--glas);box-shadow:var(--glanz)}
 /* Seitenleiste und Tableiste aus Glas, aktive Seite als Pille (3.7); hell und dunkel unterscheiden sich nur in --pille-symbol und --pille-zeichen */
 body[data-design=web] #seitennav :is(a,button){border-radius:var(--r-pille);color:var(--tx);transition:background-color var(--dauer-1) var(--kurve),color var(--dauer-1) var(--kurve)}
 @media (hover:hover){body[data-design=web] #seitennav :is(a,button):hover{background:color-mix(in srgb,var(--tx) 8%,transparent)}}
@@ -348,8 +363,6 @@ i.p{display:inline-block;width:8px;height:8px;flex:none;border-radius:50%;backgr
 i.p.ho{background:var(--ho)}i.p.ds{background:var(--dst)}i.p.a-urlaub,i.p.a-angespart{background:var(--c-urlaub)}i.p.a-gleittag{background:var(--c-gleit)}i.p.a-familientag{background:var(--c-fam)}i.p.a-freizeit{background:var(--c-frei)}
 i.p.a-krank,i.p.a-krank_attest{background:var(--c-krank)}i.p.a-krank_dienst{background:var(--c-kd)}i.p.a-elternzeit{background:var(--c-ez)}
 i.p.a-sonderurlaub_tag{background:transparent;box-shadow:inset 0 0 0 2px var(--c-urlaub)}i.p.a-kind_krank{background:transparent;box-shadow:inset 0 0 0 2px var(--c-krank)}
-details.vb{margin-top:12px;background:color-mix(in srgb,var(--mut) 9%,transparent);border-radius:12px;padding:10px 12px}
-details.vb summary{cursor:pointer;font-weight:600;color:var(--acc-fg,var(--acc));padding:10px 0;margin:-10px 0}
 .saldo.plus{color:var(--ok-t,var(--ok))}.saldo.minus{color:var(--rot-t,var(--rot))}
 .tag .ist small.saldo{font-weight:600}
 
@@ -425,8 +438,9 @@ body[data-design=handy] .ring .zone{stroke-width:9}
 :is(details.jp-auf,details.auf) summary::-webkit-details-marker{display:none}
 :is(details.jp-auf,details.auf) summary b{margin-left:auto;font-variant-numeric:tabular-nums}
 :is(details.jp-auf,details.auf) summary b.rot{color:var(--rot-t,var(--rot))}
-:is(details.jp-auf,details.auf) summary::after{content:"›";position:absolute;right:14px;top:50%;transform:translateY(-50%) rotate(90deg);color:var(--mut);font-size:20px;transition:transform .15s}
-:is(details.jp-auf,details.auf)[open] summary::after{transform:translateY(-50%) rotate(-90deg)}
+/* Pfeil aller Aufklapper, auch der Listen in der Hilfe (dort nur näher am Rand, hilfe.css) */
+:is(details.jp-auf,details.auf,details.faq) summary::after,details.hilfe-gruppe>summary::after{content:"›";position:absolute;right:14px;top:50%;transform:translateY(-50%) rotate(90deg);color:var(--mut);font-size:20px;transition:transform .15s}
+:is(details.jp-auf,details.auf,details.faq)[open] summary::after,details.hilfe-gruppe[open]>summary::after{transform:translateY(-50%) rotate(-90deg)}
 :is(details.jp-auf,details.auf)>.prognose{margin-top:8px}
 body[data-design=handy] .card>:is(details.jp-auf,details.auf){margin:12px 16px 16px}
 
@@ -509,11 +523,9 @@ header #sync-symbol,header #farb-knopf,header #suche-knopf{order:3}
    Lupe weg (Suche unter Zeit › Suche), mit beiden auch „Heute im Monat“ (Knopf „Heute“ der Seite Monat) */
 body[data-design=handy] .kopfleiste:is(:has(#zurueck.da),:has(#abmelden-knopf)) #suche-knopf{display:none}
 body[data-design=handy] .kopfleiste:has(#zurueck.da):has(#abmelden-knopf) #zu-heute{display:none}
-.schnell-leiste{display:none}body[data-design=web] .schnell-leiste{display:flex;flex-wrap:wrap;gap:3px;margin:0 0 var(--a-4)}   /* Web-Design: Schnell-Symbole unter dem Logo, mindestens 12 px darüber und darunter (F-SL1) */
-/* Eine Zeile (Sichtung 26.11.2026: die fünfte brach um, die Navigation rutschte 52 px): fünf zu 44 px (button.leiste) passen mit 3 px Abstand genau in
-   die 232 px der Seitenleiste; mit Abmelden wären es sechs, dann fällt die Lupe weg wie am Handy (Suche unter Zeit › Suche). wrap bleibt, damit ein
-   Zuviel als „Kopfleiste bricht um“ auffällt statt seitlich hinauszuragen. */
-body[data-design=web] .schnell-leiste:has(#abmelden-knopf) #suche-knopf{display:none}
+.schnell-leiste{display:none}body[data-design=web] .schnell-leiste{display:flex;flex-wrap:wrap;gap:var(--schnell-abstand);margin:0 0 var(--a-4)}   /* Web-Design: Schnell-Symbole unter dem Logo, mindestens 12 px darüber und darunter (F-SL1) */
+/* Eine Zeile (Sichtung 26.11.2026: die fünfte brach um, die Navigation rutschte 52 px): --seite-b ist aus den sechs Symbolen errechnet. wrap bleibt,
+   damit ein Zuviel als „Kopfleiste bricht um“ auffällt statt seitlich hinauszuragen. */
 /* Sync-Status: Punkt unten rechts an der Wolke; „läuft“ pulsiert (ohne Bewegung bei reduzierter Bewegung) */
 #sync-symbol{position:relative}#sync-symbol[hidden]{display:none!important}
 #sync-symbol::after{content:"";position:absolute;right:5px;bottom:5px;width:9px;height:9px;border-radius:50%;background:var(--mut);box-shadow:0 0 0 2px var(--bg)}
@@ -771,17 +783,17 @@ body[data-design=web][data-seite=tag] #huelle > :is(header,main){margin-inline:0
 body[data-design=web] #tag-daneben:not([hidden]){position:sticky;top:16px;padding:8px 32px 24px 0;max-height:calc(100vh - var(--kopf-unten,104px) - 16px);display:flex;flex-direction:column}
 /* Die Karte rollt, nicht die Spalte: sonst schnitt der Spaltenrand die Karte ohne Rundung ab und Speichern lag bei 900 px Höhe unsichtbar darunter (Runde 2.8 D4c) */
 body[data-design=web] #tag-daneben:not([hidden])>.card{min-height:0;margin:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:0;scroll-padding-bottom:calc(2 * var(--h) + 48px)}   /* Meldung frei über der Knopfleiste, auch wenn sie zweizeilig ist (große Schrift) */
-body[data-design=web] #tag-daneben>.card>.knoepfe{position:sticky;bottom:0;background:var(--card-fest);border-top:1px solid var(--line);margin-top:14px;padding:14px 0 16px}   /* Speichern, Leeren, Abbrechen immer sichtbar, die Linie zeigt: darüber geht es weiter; deckend, die Glas-Farbe --card ließ den Vermerk durchscheinen */
-/* Die deckende Zeile reicht bis an den Kartenrand (eingerückt endete sie wie abgeschnitten an der Rundung). Solange unter ihr noch etwas kommt (Vermerk,
-   „Zeiten geprüft“), verläuft der Inhalt darüber in ihre Farbe; der Verlauf läuft mit dem Rollen der Karte aus, ohne Rollbereich gibt es keine Zeitleiste
+body[data-design=web] #tag-daneben>.card>.knoepfe{position:sticky;bottom:0;background:var(--card-fest);border-top:1px solid var(--line);margin-top:14px;padding:14px 0 16px}   /* Speichern, Leeren, Abbrechen immer sichtbar, die Linie zeigt: darüber geht es weiter; deckend, die Glas-Farbe --card ließ den Inhalt darunter durchscheinen */
+/* Die deckende Zeile reicht bis an den Kartenrand (eingerückt endete sie wie abgeschnitten an der Rundung). Solange unter ihr noch etwas kommt (Anmerkung),
+   verläuft der Inhalt darüber in ihre Farbe; der Verlauf läuft mit dem Rollen der Karte aus, ohne Rollbereich gibt es keine Zeitleiste
    und keinen Verlauf. Ein Verlauf statt eines Schattens: Schwarz war auf der dunklen Karte nicht zu sehen */
 body[data-design=web] #tag-daneben>.card>.knoepfe{margin-inline:calc(-1 * var(--karte-innen));padding-inline:var(--karte-innen)}
 body[data-design=web] #tag-daneben>.card>.knoepfe>button{padding:0 10px}   /* Speichern, Leeren, Abbrechen in einer Zeile, auch mit größerer Schrift */
 body[data-design=web] #tag-daneben>.card>.knoepfe::before{content:"";position:absolute;left:0;right:0;bottom:calc(100% + 1px);height:32px;background:linear-gradient(transparent,var(--card-fest));pointer-events:none;
   animation:mehr-darunter linear both;animation-timeline:scroll(nearest)}
 @keyframes mehr-darunter{to{opacity:0}}
-/* Bleiben links weniger als 420 px (264 px Seitenleiste + 420 + 24 Abstand + 400 Spalte), rückt die Spalte unter die Ansicht, weiter ohne Blatt */
-@media (max-width:1107px){
+/* Bleiben links weniger als 420 px (311 px Seitenleiste + 420 + 24 Abstand + 400 Spalte), rückt die Spalte unter die Ansicht, weiter ohne Blatt */
+@media (max-width:1154px){
   body[data-design=web][data-seite=tag] #huelle{grid-template-columns:minmax(0,1fr)}
   body[data-design=web] #tag-daneben:not([hidden]){position:static;max-height:none;padding:0 32px 24px}
 }
@@ -796,7 +808,6 @@ body:is([data-seite=tag],[data-seite=woche],[data-seite=monat]) #inhalt .tbl{tou
   width:max-content;max-width:calc(100vw - 32px);padding:4px 4px 4px 16px;background:var(--pop);color:var(--tx);border:1px solid var(--rand);border-radius:var(--r-mittel);
   box-shadow:var(--sh-hoch);font-size:15px;animation:rueck-ein .2s ease-out}
 #rueck button{min-height:44px;padding:0 14px;font-weight:700;color:var(--acc-fg)}
-body[data-design=web]{--seite-b:264px}
 body[data-design=web] #rueck:not([hidden]){left:calc(var(--seite-b) + (100% - var(--seite-b))/2);max-width:min(520px,calc(100vw - var(--seite-b) - 32px))}
 /* Solange die Leiste steht, bekommt die Seite unten ihre Höhe dazu (--rueck-h setzt rueckgaengig.js): ganz unten gerollt verdeckt sie nichts (bfc-20) */
 body:has(#rueck:not([hidden])) .fuss{padding-bottom:calc(var(--nav-platz,0px) + var(--rueck-h,56px) + 16px)}
@@ -804,25 +815,28 @@ body:has(#rueck:not([hidden])) .fuss{padding-bottom:calc(var(--nav-platz,0px) + 
 @media (prefers-reduced-motion:reduce){#rueck:not([hidden]){animation:none}}
 /* Ein offenes Blatt verdeckt die Leiste (sie lag sonst über dem Titel der Rückfrage); ihre Uhr wartet, danach steht sie noch 15 s (rueckgaengig.js) */
 body:has(#blatt.auf) #rueck{display:none}
-/* Tag-Blatt (M2, design.md 3.17): Schnellwahl als Raster, „Mehr“ leise; „Einzelheiten“ zum Aufklappen; Vermerk als Segment mit Umbruch */
-.schnellwahl{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:12px 0}
-.schnellwahl button{min-height:44px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:15px;font-weight:600}
+/* Tag-Blatt (Entscheidung 26.11.2026): zwei Karten „Art des Tages“ und „Zeiten“ mit Abstand. Die Knöpfe füllen jede Reihe (vier: 2+2, drei: 2+1 ohne Lücke),
+   der gewählte trägt den Rahmen des gewählten Tags, „Mehr“ zeigt mit dem Winkel, ob das Auswahlfeld offen ist */
+.tb-karte{margin-top:14px;padding:12px 14px 14px;border:1px solid var(--line);border-radius:var(--r-mittel)}
+.tb-karte>h4{margin:0;font-size:15px;font-weight:700}
+.schnellwahl{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0}
+.schnellwahl button{flex:1 1 120px;min-height:44px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:15px;font-weight:600}
 .schnellwahl i.p{flex:none}                       /* Farbpunkt schrumpft im schmalen Knopf neben dem Tag sonst auf 0 px */
 .schnellwahl button.leise{color:var(--acc-fg,var(--acc))}
-details.einzelheiten>summary{cursor:pointer;font-weight:600;color:var(--acc-fg,var(--acc));min-height:44px;display:flex;align-items:center}
+.schnellwahl button[aria-pressed=true]{background:var(--acc-bg);box-shadow:inset 0 0 0 2px var(--acc-ui)}
+.schnellwahl [aria-expanded]::after{content:"";width:7px;height:7px;margin:-4px 0 0 2px;border:solid currentColor;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.schnellwahl [aria-expanded=true]::after{margin-top:4px;transform:rotate(-135deg)}
 /* Blockliste im Bearbeiten-Formular: Blöcke mit Abstand und Trennlinie, Ort breit neben „Löschen“, Knöpfe mit 44 px Tippfläche */
 .e-block{margin-top:14px;padding-top:10px;border-top:1px solid var(--line)}
 /* in engen Spalten (Web 360 px) rutscht „Löschen“ unter den Ort, damit „Homeoffice“ ganz lesbar bleibt */
 .e-kopf{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px}.e-kopf>div{flex:1 1 11em;min-width:0}.e-kopf>div>label{display:block;margin-bottom:6px}
 .e-kopf>button{flex:none;margin-left:auto}
 .e-block button.leise,#e-plus,.eintrag-neu{min-height:44px}#e-plus{margin-top:12px}button.eintrag-neu{color:var(--acc-fg,var(--acc));margin-bottom:6px}
-.seg.vermerk button{white-space:normal;line-height:1.2;min-height:44px}   /* „Dienstreise/Außentermin“ bricht nach dem Schrägstrich (<wbr> in tagblatt.js), nicht mitten im Wort */
-/* Web-Design bei 360 px: Mit min-width 44 px schrumpften die Knöpfe unter ihren Text („Außentermin“ lag auf „Fortbildung“). Nie schmaler als das längste Wort, sonst nächste Reihe. */
-.seg.vermerk{flex-wrap:wrap}
-.seg.vermerk button{min-width:min-content}
-.seg.vermerk button:first-child{min-width:44px}   /* „—“: Tippfläche auch bei 130 % Schrift */
-.vermerk-zeichen{display:inline-flex;align-items:center;color:var(--tx)}.vermerk-zeichen svg{width:16px;height:16px}
-.legende .vermerk-zeichen svg{width:14px;height:14px}
+.seg.hintergrund button{flex-direction:column;gap:4px;padding-block:6px}   /* Vorschau über dem Namen: drei Knöpfe passen auch bei 375 px */
+/* Vorschau verstärkt (--probe-hebung, hell kräftiger, dunkel aufgehellt): sonst sehen die drei Kacheln gleich aus; nur Deko (aria-hidden), daher ohne Kontrastdeckel */
+.hg-probe{display:block;width:48px;height:28px;border-radius:var(--r-klein);background-color:var(--bg);background-image:var(--bg-verlauf);box-shadow:inset 0 0 0 1px var(--feld-rand);filter:var(--probe-hebung)}
+.hg-probe[data-hg=aurora]{background-image:var(--bg-aurora)}
+.hg-probe[data-hg=uni]{background-image:var(--bg-uni)}
 /* Leerzustand der Zeit-Reiter (funktionen.md 6.3): Karte mit Symbol, Satz und Knopf, mittig */
 body[data-design] .card.leer{display:flex;flex-direction:column;align-items:center;gap:var(--a-3);padding:var(--a-8);text-align:center}   /* schlägt den Innenabstand der Karte (0 am Handy) */
 .card.leer .ic{width:32px;height:32px;color:var(--tx-3)}
@@ -856,7 +870,7 @@ body[data-design] .card.leer{display:flex;flex-direction:column;align-items:cent
    Ohne diesen Block wären Schalter, gewählte Pillen und Knöpfe ohne Rand unsichtbar; der Fokus braucht Vorrang vor dem Umriss der Pillen (!important). */
 @media (forced-colors:active){
   button:not(.link,:where(#seitennav,.menue) *){outline:1px solid ButtonText;outline-offset:-1px}
-  :is(.seg>button,.farben>button,.varianten>button,.auto-knopf):is(.on,.gew,[aria-pressed=true]),[role=tab][aria-selected=true],:is(#nav,#seitennav) [aria-current=page],
+  :is(.seg>button,.farben>button,.varianten>button,.auto-knopf):is(.on,.gew,[aria-pressed=true]),.schnellwahl>[aria-pressed=true],[role=tab][aria-selected=true],:is(#nav,#seitennav) [aria-current=page],
     .tage-wahl label:has(input:checked){outline:2px solid Highlight;outline-offset:-2px}
   .zeile>input[type=checkbox]{forced-color-adjust:none;border:2px solid ButtonText;background:ButtonFace}
   .zeile>input[type=checkbox]::after{top:3px;left:3px;width:22px;height:22px;background:ButtonText;box-shadow:none}
@@ -864,6 +878,13 @@ body[data-design] .card.leer{display:flex;flex-direction:column;align-items:cent
   .zeile>input[type=checkbox]:checked::after{background:HighlightText}
   :focus-visible{outline-style:solid!important;outline-width:3px!important;outline-color:Highlight!important}
 }
+/* Einheitlichkeit Schritt 0 (26.11.2026): gemeinsame Klassen für die Pakete P1–P4; ohne Nutzer noch keine sichtbare Änderung */
+.card>h2+.hinweis{margin-top:0}
+h3.unter{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin:18px 0 0;font-weight:700}
+body[data-design=handy] .card>h3.unter{margin-left:16px;margin-right:16px}
+.hinweis.mitte{text-align:center}
+.lade.klein{min-height:96px}
+.zeile.klein{font-size:13px;color:var(--mut);padding-block:4px;border-bottom:0}   /* Unterzeile unter einem Wert, ohne eigene Trennlinie */
 /* ---- bausteine/gleitzeit_verlauf.css ---- */
 /* Gleitzeit-Verlauf (funktionen.md 11, design.md 3.17): Linie 2 px in der Bedienfarbe, Nulllinie, Stunden- und KW-Achse mit dezenten Hilfslinien, Grenzen gestrichelt 1,5 px rot mit Text; das Grundbild höchstens 480 px breit (sonst würde die Schrift zu groß, etwa aus dem Zwischenspeicher ohne Verbindung); eingepasst (gzVerlaufEinpassen) volle Kartenbreite,
    die viewBox wächst dann mit (gzBildBreite), damit die Schrift im Bild nicht größer wird */
@@ -912,17 +933,17 @@ div.quote-ampel{display:flex;flex-direction:column;gap:2px;margin:12px 0 0}
 /* Übersicht: Raster und Kacheln (F-M1); spezifischer als die Kartenregel, darum ohne !important.
    Auswahl vom 23.11.2026: nach der Breite der Inhaltsspalte (Container), nicht nach Gerät, weil Web-App, Android, Server (Docker) und Windows dieselbe
    Oberfläche zeigen. Kleine Kacheln (.klein) stehen in jeder Breite zu zweit (Entscheidung des Entwicklers 24.11.2026: Heute | Woche, Urlaub | Krank);
-   breite Karten eigene Reihe, ab 900 px je halbe Breite (Heute-Karte | Gleitzeit, Monat | Jahr). Flex mit Umbruch statt Raster mit Spalten: Wachsen füllt jede Reihe (eine übrige kleine Kachel wird so breit wie die Reihe, keine Lücke),
+   breite Karten eigene Reihe, ab 860 px je halbe Breite (Heute-Karte | Gleitzeit, Monat | Jahr). Flex mit Umbruch statt Raster mit Spalten: Wachsen füllt jede Reihe (eine übrige kleine Kachel wird so breit wie die Reihe, keine Lücke),
    die Folge bleibt die der Anordnung (Lesereihenfolge = Bild). Die Mindestbreite in em stellt die Kacheln bei großer Schrift wieder untereinander. */
 .dash{display:flex;flex-wrap:wrap;gap:var(--karte-luecke);align-items:stretch;container:uebersicht/inline-size}
 .dash>*{flex:1 1 100%;min-width:0}
 .dash>.klein{flex-basis:calc(50% - var(--karte-luecke));min-width:min(100%,8em)}
-/* Ab 900 px Heute-Karte | Gleitzeit über Heute | Woche (Entscheidung des Entwicklers 24.11.2026); im Quelltext steht Gleitzeit hinter Heute | Woche, weil das Handy
+/* Ab 860 px Inhaltsspalte (Rechner ab 1280 px: 1280 − 311 Seitenleiste − 64 Rand − bis 17 Bildlaufleiste = 888) Heute-Karte | Gleitzeit über Heute | Woche (Entscheidung des Entwicklers 24.11.2026); im Quelltext steht Gleitzeit hinter Heute | Woche, weil das Handy
    diese Folge zeigt. Nur in genau dieser Folge rückt Gleitzeit im Bild nach vorn, eine eigene Anordnung bleibt, wie sie ist. Karten mit Knöpfen (.breit) ganz breit. */
-@container uebersicht (min-width:900px){.dash>:not(#einrichtung,.breit,.anordnen-link){flex-basis:calc(50% - var(--karte-luecke))}.dash>:is(#einrichtung,.demo-angebot,.heute-karte){order:-2}.heute-karte+.k-tag+.k-woche+.k-gleitzeit{order:-1}}
+@container uebersicht (min-width:860px){.dash>:not(#einrichtung,.breit,.anordnen-link){flex-basis:calc(50% - var(--karte-luecke))}.dash>:is(#einrichtung,.demo-angebot,.heute-karte){order:-2}.heute-karte+.k-tag+.k-woche+.k-gleitzeit{order:-1}}
 /* Ohne diese Folge (Modul Gleitzeit aus, eigene Anordnung) hat die Heute-Karte keinen Partner (die Kachel Gleitzeit steht bei abgeschaltetem Modul noch im DOM, darum auch data-ohne): ganze Breite, sonst rückte die Kachel Heute neben sie
    und alle Paare danach verschöben sich (Heute | Woche, Monat | Jahr, Prüfbefund 24.11.2026); :not(#einrichtung) nur für den Vorrang vor der Regel davor */
-@container uebersicht (min-width:900px){.dash:not(:has(.heute-karte+.k-tag+.k-woche+.k-gleitzeit))>.heute-karte:not(#einrichtung),body[data-ohne~="gleitzeit"] .dash>.heute-karte:not(#einrichtung){flex-basis:100%}}
+@container uebersicht (min-width:860px){.dash:not(:has(.heute-karte+.k-tag+.k-woche+.k-gleitzeit))>.heute-karte:not(#einrichtung),body[data-ohne~="gleitzeit"] .dash>.heute-karte:not(#einrichtung){flex-basis:100%}}
 body[data-design] .dash .kachel{display:flex;flex-direction:column;gap:6px;padding:var(--kachel-innen);margin:0;overflow:visible;color:var(--tx);text-decoration:none;container-type:inline-size}
 body[data-design] .dash .card.kachel>*{margin-left:0;margin-right:0}
 /* Kennzahl (3.2): Etikett oben, Zahl groß, Zusatz klein */
@@ -933,7 +954,7 @@ body[data-design] .dash .card.kachel>*{margin-left:0;margin-right:0}
 body[data-design=handy] .dash .kachel>b{font-size:min(28px,21cqi)}
 .dash .kachel>b .k-art{font-size:min(1em,calc(150cqi / var(--zeichen,17)))}   /* je Zeichen des längsten Worts (start.js) gut 0,6 em: „Gleittag“ groß, „Freizeitausgleich“ kleiner, nie „Gleitta|g“ */
 .dash .kachel>small{font-size:13px;line-height:1.45;color:var(--tx-2)}
-.dash .kachel .etikett{display:inline-block}   /* „Saldo dieser Woche:“ bleibt ganz, der Wert rückt bei Platzmangel als Ganzes in die nächste Zeile (eine Angabe je Zeile) */
+.dash .kachel .etikett{display:inline-block}   /* „Saldo dieser Woche“ bleibt ganz, der Wert rückt bei Platzmangel als Ganzes in die nächste Zeile (eine Angabe je Zeile) */
 .dash .heute-karte .gross{display:block;font-size:24px}
 .dash .heute-karte>div:not(.knoepfe) span{color:var(--tx-2)}
 .dash .heute-karte .knoepfe{margin-top:6px}
@@ -972,6 +993,7 @@ body[data-design] .dash .kachel.quote>.hero{margin-top:0}   /* der Abstand über
 .dash .zutun .zt-tage{margin-bottom:8px}   /* Links der fehlenden Tage über den Knöpfen des Eintrags */
 .dash .zutun .zt-tage>a[hidden]{display:none}   /* ältere Tage bis „Alle Tage“; sonst gewänne display von .knoepfe>.btn */
 :is(.demo-angebot,#einrichtung) small{display:block;margin-top:6px;color:var(--tx-2)}
+#einrichtung>h2{margin:0;padding:0;font-size:15px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--tx-2)}   /* Kartentitel wie „Zu tun“; die Kachel hat schon ihren Innenrand */
 #einrichtung #ei-titel{display:block}   /* Block: Der Fokusring liegt dann als ein Rahmen um den Titel, nicht je Zeile durch den Text (zweizeiliger Titel am Handy) */
 #einrichtung #ei-titel:focus{outline:none}
 #einrichtung #ei-fehler:empty{display:none}   /* ohne Meldung keine zweite Lücke über den Knöpfen */
@@ -1014,6 +1036,7 @@ body[data-seite=start] #stempel-banner{display:none}
 /* Monatsliste */
 .monat-grid{display:block}
 body[data-design=handy] .monat-schnell>:not(.pdf){display:none}body[data-design=handy] .monat-schnell>.pdf{flex:1}
+body[data-design=handy] .monat-schnell:not(:has(.pdf)){display:none}   /* ohne PDF-Modul bliebe am Handy eine leere Reihe mit Abstand */
 .kal{margin:0}
 .kk,.kg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .kk span{text-align:center;font-size:11px;font-weight:700;color:var(--tx-2);padding:2px 0 6px;text-transform:uppercase}
@@ -1025,7 +1048,6 @@ body[data-design=handy] .monat-schnell>:not(.pdf){display:none}body[data-design=
 /* Raster (M1, design.md 3.17): Tönung 18 % und Leiste unten in der Farbe der Art, dazu Buchstabe (nie nur Farbe); Schrift auf Tönung immer --tx */
 .kz[class*=" t-"] small{color:var(--tx)}
 .kz .art-k{font-size:11px;font-weight:700;color:var(--tx);display:inline-flex;align-items:center}
-.kz .art-k .vermerk-zeichen svg{width:11px;height:11px;margin-left:2px}
 .kz.t-ho{--t:var(--ho)}.kz.t-ds{--t:var(--dst)}.kz.t-urlaub,.kz.t-angespart,.kz.t-sonderurlaub_tag{--t:var(--c-urlaub)}.kz.t-gleittag{--t:var(--c-gleit)}
 .kz.t-krank,.kz.t-krank_attest,.kz.t-kind_krank{--t:var(--c-krank)}.kz.t-krank_dienst{--t:var(--c-kd)}.kz.t-elternzeit{--t:var(--c-ez)}.kz.t-familientag{--t:var(--c-fam)}.kz.t-freizeit{--t:var(--c-frei)}   /* wie die Punkte der Legende */
 .kz[class*=" t-"]{background:color-mix(in srgb,var(--t) 18%,transparent);box-shadow:inset 0 -3px 0 var(--t)}
@@ -1058,12 +1080,13 @@ body[data-design=web] .monat-grid>*{min-width:0}
 /* Sehr breit mit offener Jahres-Prognose: sie steht rechts neben den Kennzahlen statt darunter, so bleibt die Karte niedrig genug fürs Fenster (Rückmeldung 22.11.2026) */
 @media (min-width:1800px){
   body[data-design=web][data-seite=monat] .monat-grid:has(details.jp-auf[open]){grid-template-columns:minmax(0,1fr) 740px}
-  body[data-design=web][data-seite=monat] .links>.card:has(>details.jp-auf[open]){display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto auto 1fr;column-gap:24px;align-items:start}
-  body[data-design=web][data-seite=monat] .links>.card:has(>details.jp-auf[open])>:not(details,.prognose){grid-column:1}
+  body[data-design=web][data-seite=monat] .links>.card:has(>details.jp-auf[open]){display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto auto auto 1fr;column-gap:24px;align-items:start}
+  body[data-design=web][data-seite=monat] .links>.card:has(>details.jp-auf[open])>:not(details,.prognose,h2){grid-column:1}
+  body[data-design=web][data-seite=monat] .links>.card:has(>details.jp-auf[open])>h2{grid-column:1/-1;grid-row:1}   /* Titel über beiden Spalten, alles darunter rückt eine Zeile tiefer */
   /* Die Monats-Prognose rechts über der Jahres-Prognose: seit sie je Aussage eine Zeile hat, war die linke Spalte für 1920 × 900 zu hoch (670 px, Prüfbefund 24.11.2026) */
-  body[data-design=web][data-seite=monat] .links>.card:has(>details.jp-auf[open])>.prognose{grid-column:2;grid-row:1}
-  body[data-design=web][data-seite=monat] .links>.card:has(>details.jp-auf[open])>.hero{grid-row:1/span 2}   /* der Ring reicht neben Prognose und Anfang der Jahres-Prognose, die erste Zeile bleibt so niedrig wie die Prognose */
-  body[data-design=web][data-seite=monat] .links>.card>details.jp-auf[open]{grid-column:2;grid-row:2/-1;margin-top:0}
+  body[data-design=web][data-seite=monat] .links>.card:has(>details.jp-auf[open])>.prognose{grid-column:2;grid-row:2}
+  body[data-design=web][data-seite=monat] .links>.card:has(>details.jp-auf[open])>.hero{grid-row:2/span 2}   /* der Ring reicht neben Prognose und Anfang der Jahres-Prognose, die erste Zeile bleibt so niedrig wie die Prognose */
+  body[data-design=web][data-seite=monat] .links>.card>details.jp-auf[open]{grid-column:2;grid-row:3/-1;margin-top:0}
 }
 @media (max-width:1511px){body[data-design=web][data-seite=monat] .monat-grid{grid-template-columns:minmax(0,1fr)}body[data-design=web][data-seite=monat] .monat-grid .links{position:static}}
 /* Prognose-Kästen (Entscheidung des Entwicklers 24.11.2026): Etikett oben, darunter je Aussage eine Zeile über die volle Breite, fette Werte am Stück */
@@ -1083,7 +1106,6 @@ body[data-design=handy] .kw-kopf{white-space:nowrap;line-height:1.2}
 .wz{position:relative;height:10px;border-radius:999px;background:var(--line);margin:8px 0 2px}
 /* Marke „Soll bis heute“: senkrechter Strich in Textfarbe, damit sie auf Grün und Grau sichtbar bleibt; etwas höher als der Balken, damit sie an den runden Enden ganz zu sehen ist */
 .wz-marke{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--tx)}
-.wz-heute span{color:var(--tx-2)}
 .wz i{display:block;height:100%;background:var(--ok);border-radius:999px}
 /* ---- seiten/horest.css ---- */
 .mit-hilfe{display:inline-flex;align-items:center;gap:6px}
@@ -1099,6 +1121,10 @@ body[data-design=handy] .kw-kopf{white-space:nowrap;line-height:1.2}
 body[data-seite=horest] .prognose{flex-direction:column;align-items:stretch;gap:4px}
 body[data-seite=horest] .prognose b{white-space:nowrap}
 .spiel .zeile>b{white-space:nowrap}
+/* Quote-Kopf der Karten (Auftrag 26.11.2026): Der Titel steht als Überschrift neben dem Ring, in Größe und Farbe wie der Name im Kopf der Seite Monat */
+.spiel .hero .txt h2{margin:0 0 4px;padding:0;font-size:17px;font-weight:700;color:var(--tx)}
+.spiel>.hero{margin-bottom:8px}
+body[data-design=web] .spiel .hero .hilfe-knopf{margin-left:6px;vertical-align:middle}   /* „?“ klebte am Wert der Ist-Zeit */
 /* ---- seiten/jahr.css ---- */
 /* Tabellen, Zeilen */
 .tbl{overflow-x:auto}
@@ -1194,15 +1220,11 @@ body[data-design=handy] .jahr-tbl>.hinweis{margin:14px 4px}   /* seitlich 16 px 
 .zeile.bruecke+.zeile.bruecke{margin-top:6px}   /* Vorschläge stießen bündig aneinander (Design-Prüfung, Zustand urlaub/resturlaub-frist) */
 /* ---- seiten/krank.css ---- */
 /* Krankheit */
-.krank-kacheln{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px}
-/* Vier oder fünf Kacheln (mit „aus Startwerten“): am Rechner alle in einer Reihe, zu zweit füllt eine einzelne letzte Kachel ihre Reihe */
-.krank-kacheln>:last-child:nth-child(odd){grid-column:1/-1}
-@media (min-width:900px){.krank-kacheln{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:1fr}.krank-kacheln>:last-child:nth-child(odd){grid-column:auto}}
-body[data-design] .krank-kacheln .card{margin:0;padding:14px 16px;display:flex;flex-direction:column;gap:2px}
-/* Kennzahl (design.md 3.2): Etikett oben, große Zahl darunter */
-.krank-kacheln span{order:-1;font-size:13px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--tx-2)}
-.krank-kacheln b{font-size:34px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1;min-width:0;overflow-wrap:anywhere}
-body[data-design=handy] .krank-kacheln b{font-size:28px}
+/* Kennzahl „Krank im Dienst“: kurzer Zusatz unter dem Text statt eines langen Texts (Zahl bleibt auf einer Höhe mit den Nachbarn) */
+body[data-seite=krank] .raster small{display:block;font-size:12px;color:var(--mut)}
+/* Vier oder fünf Kennzahlen (Startwerte nur, wenn es welche gibt): zwei Spalten statt des 3er-Rasters, ein letztes Feld allein füllt seine Reihe (keine halbe Reihe mit Leerplatz) */
+body[data-seite=krank] .raster{grid-template-columns:repeat(2,1fr)}
+body[data-seite=krank] .raster>:last-child:nth-child(odd){grid-column:1/-1}
 .phasen{display:grid;gap:10px;margin:10px 0}
 body[data-design=handy] .phasen{margin:10px 16px}
 .phase{display:block;text-decoration:none;color:var(--tx);padding:12px 14px;border-radius:var(--r-mittel);border:1px solid var(--rand);background:var(--card);box-shadow:var(--glanz),var(--sh)}
@@ -1220,8 +1242,6 @@ body[data-design=web] .phasen{grid-template-columns:repeat(auto-fill,minmax(min(
 body[data-design=web] .phase{display:flex;flex-direction:column;justify-content:space-between}
 body[data-design=web] .phase-kopf{flex-direction:column;align-items:flex-start;gap:6px}
 body[data-design=web] .phase-kopf b{font-size:17px}
-/* Kachel „Krank im Dienst“: kurzer Zusatz unter dem Etikett statt eines langen Etiketts (Zahl bleibt auf einer Höhe mit den Nachbarn) */
-.krank-kacheln small{font-size:13px;color:var(--tx-2)}
 /* Einträge vor „Erfassung gültig ab“: grau, zählen nicht */
 .card.vor-beginn h2{color:var(--mut)}
 body[data-design=handy] .card.vor-beginn .phase-tage{margin:0 16px 10px}
@@ -1240,8 +1260,10 @@ body[data-seite=steuer] .zeile.zeitraum>b{white-space:normal}
 /* Unterzeile „Vorschau“ über der Tabelle einer Export-Karte; am Handy rückt sie wie die übrigen Kinder der Karte ein */
 .vorschau-titel{margin:14px 0 0;font-size:13px;font-weight:600;color:var(--mut)}
 body[data-design=handy] .card>.vorschau-titel{margin-left:16px;margin-right:16px}
+/* Karte „Zeitraum“: die letzte Wahl ist ihr letztes Kind; am Handy (Karte ohne Innenabstand) bekommt sie den Rand der übrigen Kinder auch unten */
+body[data-design=handy] .export-wahl>.feld-heute:last-child{margin-bottom:var(--a-4)}
 /* ---- seiten/monatsnachweis.css ---- */
-/* Seite Monatsnachweis: Vorschau wie das Dokument (dokument.nachweis_dokument). Die Monatswahl nutzt .feld-heute aus export.css. */
+/* Seite Monatsnachweis: Vorschau wie das Dokument (dokument.nachweis_dokument). Den Monat wählt der Kopf ‹ Titel › (grundlage.js, kopfHtml). */
 body[data-design=web][data-seite=monatsnachweis] :is(header,main){max-width:calc(var(--lesebreite) + 64px)}
 body[data-design=web][data-seite=monatsnachweis] #stempel-banner{max-width:var(--lesebreite)}
 /* Titel und „Erstellt am“ wie im PDF, kleiner als der Seitentitel; am Handy rücken sie wie die übrigen Kinder der Karte ein */
@@ -1298,8 +1320,6 @@ body .konflikt .knoepfe button{display:block;flex:1 1 220px;text-align:left;heig
 .koppel-code{font:700 26px/1.3 ui-monospace,Consolas,monospace;letter-spacing:.06em;text-align:center;margin:12px 0 4px;overflow-wrap:anywhere;user-select:all}
 .koppel-qr svg{display:block;width:220px;max-width:70%;height:auto;margin:10px auto 0;border-radius:10px}
 .koppel-video{display:block;width:100%;max-height:50vh;margin-top:10px;border-radius:12px;background:#000}.koppel-video[hidden]{display:none}
-/* Karte „Konflikte“: nur so hoch wie ihr Inhalt, nicht so hoch wie die Karte daneben (leer: 1280 px) */
-body[data-design=web] #sync-karte .gitter.paar>.card:last-child{align-self:start}
 /* Luft nach der Liste der Wege, vor der Zeile „Web-App fürs Handy“ und nach dem Aufklapper: der Absatz nach der Liste hat margin-top:0, die Zeile keinen Außenrand */
 #sync-karte ul.hinweis{margin-bottom:12px}
 #sync-karte p.hinweis+.zeile{margin-top:8px}
@@ -1358,9 +1378,6 @@ body[data-design=handy] .card>.akzent-demo{margin-left:16px;margin-right:16px}
 .demo-text{color:var(--acc-fg);font-weight:700}
 .demo-umriss{display:inline-flex;align-items:center;height:var(--h);padding:0 18px;border-radius:var(--rr);border:2px solid var(--acc-ui);color:var(--tx);font-weight:600}
 .demo-knopf,.demo-chip{box-shadow:inset 0 0 0 1px var(--acc-rand,transparent)}
-/* Unterüberschrift in einer Karte */
-h3.unter{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin:18px 0 0;font-weight:700}
-body[data-design=handy] .card>h3.unter{margin-left:16px;margin-right:16px}
 body[data-design=handy] .farben button{width:44px;height:44px}
 body[data-design=handy] .farben{gap:8px}   /* 6 Farben in einer Zeile ab 375 px (mit 12 px brach Graphit allein in die zweite) */
 .tage-wahl label:has(input:checked){border-color:var(--acc-ui)}
@@ -1373,7 +1390,6 @@ body[data-design=handy] .card>.pausen-stufen{margin-left:16px;margin-right:16px}
 .profil>.knoepfe{margin-top:2px}
 .profil>input+.knoepfe{margin-top:12px}
 .profil-farbe{display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:-2px;border:1px solid var(--line)}
-#module-karte h3{margin:14px 16px 2px;font-size:.82rem;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
 /* Einmal-Code in der Verwaltung: Schrift, in der l, I, 1 und O, 0 unterscheidbar sind; ganz markierbar zum Kopieren */
 #blatt .ad-code{font:700 24px/1.3 ui-monospace,Consolas,monospace;letter-spacing:.06em;text-align:center;overflow-wrap:anywhere;user-select:all;margin:4px 0 12px;padding:12px;border:1px solid var(--line);border-radius:var(--rr)}
 /* Liste der Unterseiten: ganze Zeile ist der Link (Symbol, Name mit Kurztext, Pfeil) */
@@ -1391,11 +1407,12 @@ body[data-design=handy] .card>.pausen-stufen{margin-left:16px;margin-right:16px}
 /* Kind krank untereinander, sobald die Karte für das Dienstverhältnis neben „Eigener Wert“ zu schmal ist: am Handy las man nur „Gesetzlich vers“,
    bei 768 px am Rechner „Beamte in Bayern (§“. Gemessen an der Karte in ihrer Schrift (em), so stimmt es auch bei großer Schrift.
    Ebenso Wochenstunden und Homeoffice, sobald „kein Homeoffice“ neben dem Zähler nicht mehr ganz zu lesen ist (Handy bis 390 px) */
-.card:has(#kk-dienst){container:regelkarte/inline-size}
+.card:is(:has(#kk-dienst),:has(#r-hm)){container:regelkarte/inline-size}
 @container regelkarte (max-width:46em){.reihe.kind-krank,.reihe.zusatzurlaub{grid-auto-flow:row;grid-template-rows:none;grid-template-columns:minmax(0,1fr)}}
 @container regelkarte (max-width:23em){.reihe:has(#r-hm){grid-auto-flow:row;grid-template-rows:none;grid-template-columns:minmax(0,1fr)}}
 /* Kacheln anpassen: Name, Pfeilknöpfe (je 44 px, auch gegen die Knopfhöhe des Designs) und Schalter in einer Zeile */
 .anordnen{list-style:none;margin:4px 0 0;padding:0}
+.zeile.geraet>span{flex:1;min-width:0;overflow-wrap:anywhere}   /* langer Gerätename bei großer Schrift: Name bricht um, „Entfernen“ bleibt in der Karte (Prüfbefund 26.11.2026) */
 .anordnen>.zeile>span:first-child{flex:1;min-width:0;overflow-wrap:break-word;hyphens:auto}   /* schmale Zeile oder große Schrift: „Jahreswechsel“ nach Silben trennen, nicht „Jahreswechs|el“ (Prüfbefund 24.11.2026) */
 .anordnen .pfeile{display:flex;gap:6px;flex:none}
 body[data-design] .anordnen button{min-width:44px;min-height:44px;height:44px;padding:0;display:inline-flex;align-items:center;justify-content:center}
@@ -1407,8 +1424,7 @@ details.faq{border-top:1px solid var(--line);padding:2px 0}
 details.faq:first-of-type{border-top:0}
 details.faq summary{cursor:pointer;list-style:none;padding:13px 26px 13px 0;font-weight:600;position:relative}
 details.faq summary::-webkit-details-marker{display:none}
-details.faq summary::after{content:"›";position:absolute;right:4px;top:50%;transform:translateY(-50%) rotate(90deg);color:var(--mut);font-size:20px;transition:transform .15s}
-details.faq[open] summary::after{transform:translateY(-50%) rotate(-90deg)}
+details.faq summary::after{right:4px}   /* Listen-Variante: Pfeil am Rand der Zeile; Zeichen und Drehung wie alle Aufklapper (grundlage.css) */
 details.faq>div{padding:0 0 14px;color:var(--tx);line-height:1.5;font-size:15px}
 details.faq>div p{margin:0}
 details.faq>div p+p,details.faq>div :is(ul,ol)+p{margin-top:8px}   /* Absätze mit Abstand, sonst wirken sie wie Zeilen mit <br> */
@@ -1434,6 +1450,7 @@ body[data-design=web] #blatt .inh:has(.lizenz-text){max-width:min(760px, calc(10
 .lizenz-text{white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 0;font-size:15px;line-height:1.5;font-family:inherit}
 /* Hilferunde 23.11.2026: Rückweg oben, Suchfeld, Gruppen, Weg und Wiki-Link je Abschnitt */
 .hilfe-rueck{margin:0 0 8px}
+.card>.ueber-app{margin:0 16px 8px}   /* Karte „Über diese App“: Version und Lizenzen eingerückt wie die Zeilen der Hilfe */
 body[data-design=handy] .card>.hilfe-rueck{margin-top:12px}   /* Handy-Karten haben oben keinen Innenabstand */
 .hilfe-suche{margin:4px 0 8px}
 .hilfe-suche label{margin-top:0}
@@ -1445,8 +1462,7 @@ details.hilfe-gruppe{border-top:1px solid var(--line);padding:2px 0}   /* Zeilen
 details.hilfe-gruppe:first-of-type{border-top:0}
 details.hilfe-gruppe>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;min-height:44px;box-sizing:border-box;padding:10px 26px 10px 0;position:relative}
 details.hilfe-gruppe>summary::-webkit-details-marker{display:none}
-details.hilfe-gruppe>summary::after{content:"›";position:absolute;right:4px;top:50%;transform:translateY(-50%) rotate(90deg);color:var(--mut);font-size:20px;transition:transform .15s}
-details.hilfe-gruppe[open]>summary::after{transform:translateY(-50%) rotate(-90deg)}
+details.hilfe-gruppe>summary::after{right:4px}
 details.hilfe-gruppe[open]>summary{margin-bottom:4px}
 details.hilfe-gruppe>summary h3{margin:0;font-size:17px;font-weight:700;color:var(--tx)}
 .hilfe-anzahl{color:var(--tx-2);font-variant-numeric:tabular-nums}
@@ -1457,14 +1473,6 @@ details.faq{scroll-margin-top:72px}   /* beim Sprung über „?“ nicht unter d
 details.faq>div p.hilfe-weg{margin-top:8px}
 details.faq>div p.hilfe-wiki{margin-top:6px}
 /* ---- seiten/suche.css ---- */
-/* Suche (Auftrag A6, 25.11.2026): Formular und je Tag eine Zeile, die den Tag öffnet. Art und Ort je eine volle Zeile: nebeneinander ist „Erholungsurlaub“ bei 375 px abgeschnitten */
+/* Suche (Auftrag A6, 25.11.2026): Formular, darunter das Ergebnis als Karte mit Tageszeilen (wie Woche und Monat). Art und Ort je eine volle Zeile: nebeneinander ist „Erholungsurlaub“ bei 375 px abgeschnitten */
 .card.suche>select{width:100%}
-body[data-design=handy] .card.suche>:is(label,input,select){margin-left:16px;margin-right:16px}
-body[data-design=handy] #s-ergebnis{padding:4px 16px 12px}
-.treffer-zahl{margin:4px 0 8px;color:var(--tx-2);font-size:13px;font-weight:600}
-.treffer-liste{display:grid;gap:8px}
-.treffer{display:flex;flex-direction:column;gap:2px;min-height:44px;padding:10px 14px;border-radius:var(--r-mittel);border:1px solid var(--rand);background:var(--card);color:var(--tx);text-decoration:none}
-.treffer-kopf{display:flex;justify-content:space-between;gap:8px}
-.treffer-zeit{font-variant-numeric:tabular-nums;font-weight:600}
-.treffer-art{color:var(--tx-2);font-size:13px}
-.treffer-notiz{color:var(--mut);font-size:13px;overflow-wrap:anywhere}
+body[data-design=handy] .card.suche>:is(label,input,select,.seg){margin-left:16px;margin-right:16px}
